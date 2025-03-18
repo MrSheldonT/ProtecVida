@@ -1,0 +1,7 @@
+venv/
+entorno/
+.env
+src/pictures/
+__pycache__/
+*.py[cod]
+.__pycache__/
