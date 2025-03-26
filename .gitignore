@@ -1,5 +1,7 @@
 venv/
 entorno/
+.idea
+.venv
 .env
 src/pictures/
 __pycache__/

@@ -4,13 +4,14 @@ USE ProtectVida;
 
 CREATE TABLE cuenta (
     id INT AUTO_INCREMENT PRIMARY KEY
+    , google_id VARCHAR(255) UNIQUE
     , nombre VARCHAR(100) NOT NULL
-    , correoElectronico VARCHAR(255) UNIQUE NOT NULL
-    , hashContraseña VARCHAR(255) NOT NULL
-    , peso INT
-    , altura INT
-    , sexo ENUM('M', 'F', 'Otro') NOT NULL
-    , fechaNacimiento DATE NOT NULL
+    , correo_electronico VARCHAR(255) UNIQUE NOT NULL
+    , hash_contraseña CHAR(60) NOT NULL
+    , peso DECIMAL(5,2)
+    , altura DECIMAL(5,2)
+    , sexo ENUM('M', 'F', 'Otro')
+    , fecha_nacimiento DATE
 );
 
 CREATE TABLE condicion (
@@ -32,10 +33,9 @@ CREATE TABLE grupo (
 );
 
 CREATE TABLE miembro_grupo (
-    id INT AUTO_INCREMENT PRIMARY KEY
-    , cuenta_id INT
+    cuenta_id INT
     , grupo_id INT
-    , esAdministrador BOOLEAN DEFAULT FALSE
+    , es_administrador BOOLEAN DEFAULT FALSE
     , FOREIGN KEY (cuenta_id) REFERENCES cuenta(id) ON DELETE CASCADE
     , FOREIGN KEY (grupo_id) REFERENCES grupo(id) ON DELETE CASCADE
 );
@@ -49,30 +49,36 @@ CREATE TABLE zona_segura (
     , radio DOUBLE NOT NULL
     , FOREIGN KEY (cuenta_id) REFERENCES cuenta(id) ON DELETE CASCADE
 );
--- Esta probablemente se guarde cada cierto tiempo.
-CREATE TABLE historial_ubicacion (
+
+CREATE TABLE tipo_signo_vital (
     id INT AUTO_INCREMENT PRIMARY KEY
-    , cuenta_id INT
-    , fecha DATETIME DEFAULT CURRENT_TIMESTAMP
-    , latitud DOUBLE NOT NULL
-    , longitud DOUBLE NOT NULL
-    , FOREIGN KEY (cuenta_id) REFERENCES cuenta(id) ON DELETE CASCADE
+    , nombre VARCHAR(100) UNIQUE NOT NULL
+    , descripcion TEXT
+    , unidad VARCHAR(50)
 );
 
 CREATE TABLE signo_vital (
     id INT AUTO_INCREMENT PRIMARY KEY
-    , cuenta_id INT
+    , cuenta_id INT NOT NULL
+    , tipo_id INT NOT NULL
     , fecha DATETIME DEFAULT CURRENT_TIMESTAMP
-    , tipo ENUM('Frecuencia cardiaca', 'Presion arterial', 'Oxigeno en sangre', 'Otro') NOT NULL
-    , valor DOUBLE NOT NULL
+    , valor_numerico_1 DOUBLE -- Primer valor (frecuencia cardíaca o sistólica)
+    , valor_numerico_2 DOUBLE -- Segundo valor (diastólica)
     , FOREIGN KEY (cuenta_id) REFERENCES cuenta(id) ON DELETE CASCADE
+    , FOREIGN KEY (tipo_id) REFERENCES tipo_signo_vital(id) ON DELETE CASCADE
+);
+
+CREATE TABLE tipo_alerta (
+    id INT AUTO_INCREMENT PRIMARY KEY
+    , nombre VARCHAR(100) UNIQUE NOT NULL
 );
 
 CREATE TABLE alerta (
     id INT AUTO_INCREMENT PRIMARY KEY
     , cuenta_id INT
-    , tipo ENUM('Caída', 'Apnea', 'Hipertensión', 'Ritmo cardíaco Anormal', 'Otro') NOT NULL
+    , tipo_id INT NOT NULL
     , fecha DATETIME DEFAULT CURRENT_TIMESTAMP
     , atendida BOOLEAN DEFAULT FALSE
     , FOREIGN KEY (cuenta_id) REFERENCES cuenta(id) ON DELETE CASCADE
+    , FOREIGN KEY (tipo_id) REFERENCES tipo_alerta(id) ON DELETE CASCADE
 );
