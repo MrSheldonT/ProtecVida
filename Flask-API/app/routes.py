@@ -75,7 +75,7 @@ def conseguir_cuenta():
         return jsonify({'error': f'Error: {e}'}), 500
 
 
-@cuenta.route('/editar_perfil', methods=['POST'])
+@cuenta.route('/editar_perfil', methods=['PUT'])
 @token_required
 def editar_cuenta():
 
@@ -196,7 +196,7 @@ def agregar_miembro():
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
 
-@grupo.route('/eliminar_miembro', methods=['POST'])
+@grupo.route('/eliminar_miembro', methods=['DELETE'])
 @token_required
 def eliminar_miembro():
 
@@ -235,7 +235,7 @@ def eliminar_miembro():
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
 
-@grupo.route('/salir_grupo', methods=['POST'])
+@grupo.route('/salir_grupo', methods=['DELETE'])
 @token_required
 def salir_grupo():
 
@@ -416,7 +416,7 @@ def editar_zona_segura():
     db.session.commit()
     return jsonify({'mensaje': 'Zona segura actualizada con éxitos', 'data': update_zona_segura.to_json()}), 200
 
-@zona_segura.route('/eliminar_zona_segura', methods=['POST'])
+@zona_segura.route('/eliminar_zona_segura', methods=['DELETE'])
 @token_required
 def eliminar_zona_segura():
     safe_area_data = request.get_json()
