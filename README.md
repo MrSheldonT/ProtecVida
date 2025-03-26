@@ -19,7 +19,7 @@ erDiagram
         decimal peso
         decimal altura
         enum sexo
-        date fechaNacimiento
+        date fecha_nacimiento
     }
 
     condicion {
