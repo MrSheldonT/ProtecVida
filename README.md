@@ -15,7 +15,7 @@ erDiagram
         varchar google_id
         varchar nombre
         varchar correo_electronico
-        char hash_contraseña
+        char hash_contrasena
         decimal peso
         decimal altura
         enum sexo
