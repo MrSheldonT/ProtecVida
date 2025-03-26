@@ -21,8 +21,7 @@ def create_app():
     @app.route("/")
     def index():
         return "Hello :D"
-    #from app.routes import register_routes
-    #register_routes(app=app)
+
     @app.errorhandler(404)
     def page_404(e):
             return """

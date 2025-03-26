@@ -329,6 +329,9 @@ def crear_zona_segura():
     safe_area_data = request.get_json()
     nombre = str(safe_area_data.get('nombre', '')).strip()
 
+    if not nombre:
+        return jsonify({'error': 'No se ha ingresado un nombre'}), 400
+
     try:
         latitud = float(safe_area_data.get('latitud'))
         if not (-90 <= latitud <= 90):
@@ -431,8 +434,53 @@ def eliminar_zona_segura():
         if not delete_zona_segura:
             return jsonify({'error': 'Zona segura no encontrada'}), 404
 
+        if delete_zona_segura.cuenta_id != request.user_id :
+            return jsonify({'error': 'Esta zona segura no es tuya'}), 403
+
         db.session.delete(delete_zona_segura)
         db.session.commit()
-        return jsonify({'mensaje': 'La zona segura se eliminó con exito'}), 200
+        return jsonify({'mensaje': f'La zona {delete_zona_segura.nombre} eliminó con exito'}), 200
+    except Exception as e:
+        return jsonify({'error': f'Error: {e}'}), 500
+
+@zona_segura.route('/conseguir_mis_zonas_seguras', methods=['GET'])
+@token_required
+def conseguir_mis_zonas_seguras():
+    try:
+        zonas_seguras = db.session.query(ZonaSegura).filter_by(cuenta_id=request.user_id).all()
+        safe_area_data = []
+        for zona in zonas_seguras:
+            safe_area_data.append(zona.to_json())
+
+        return jsonify({'mensaje': 'Zonas seguras conseguidas con éxito', 'data': safe_area_data}), 200
+    except Exception as e:
+        return jsonify({'error': f'Error: {e}'}), 500
+
+@zona_segura.route('/conseguir_zonas_seguras', methods=['GET'])
+@token_required
+def conseguir_zonas_seguras():
+    """
+        Te permite consultar las zonas seguras que le pertenezan a otros usuarios de un grupo en común.
+    """
+    try:
+        grupos_usuario = db.session.query(MiembroGrupo.grupo_id).filter(
+            MiembroGrupo.cuenta_id == request.user_id
+        ).subquery()
+
+        miembros_grupo = db.session.query(MiembroGrupo.cuenta_id).filter(
+            MiembroGrupo.grupo_id.in_(grupos_usuario),
+            MiembroGrupo.cuenta_id != request.user_id
+        ).subquery()
+
+        zonas_seguras = db.session.query(ZonaSegura).filter(
+            ZonaSegura.cuenta_id.in_(miembros_grupo)
+        ).all()
+
+        safe_area_data = []
+        for zona in zonas_seguras:
+            safe_area_data.append(zona.to_json())
+
+        return jsonify({'mensaje': 'Zonas seguras conseguidas con éxito', 'data': safe_area_data}), 200
+
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
