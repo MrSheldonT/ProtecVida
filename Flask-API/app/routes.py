@@ -1,11 +1,13 @@
 from flask import Blueprint, jsonify, request
-from .models import Cuenta, Condicion, CuentaCondicion, Grupo, MiembroGrupo, ZonaSegura, Alerta, TipoAlerta, SignoVital
+from .models import Cuenta, Condicion, CuentaCondicion, Grupo, MiembroGrupo, ZonaSegura, Alerta, TipoAlerta, SignoVital, ubicacion
 from .extensions import db
 from .utils import check_password, hash_password, create_token_jwt, valid_password, valid_email, token_required
 
 cuenta = Blueprint('cuenta', __name__)
 grupo = Blueprint('grupo', __name__)
 zona_segura = Blueprint('zona_segura', __name__)
+condicion = Blueprint('condicion', __name__)
+
 @cuenta.route('/registrarse', methods=['POST'])
 def crear_cuenta():
 
@@ -156,11 +158,58 @@ def crear_grupo():
         db.session.add(add_miembro_grupo)
         db.session.commit()
 
-        return  jsonify({'mensaje': f'Grupo {new_group.nombre} creado exitosamente'}), 201
+        return  jsonify({'mensaje': f'Grupo {new_group.nombre} creado exitosamente', 'data': new_group.to_json()}), 201
 
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
 
+@grupo.route('/editar_grupo', methods=['PUT'])
+@token_required
+def editar_grupo():
+    group_data = request.get_json()
+
+    nombre = group_data.get('nombre_grupo', '')
+
+    grupo_id = group_data.get('grupo_id', 0)
+    if not grupo_id:
+        return jsonify({'error': 'Error, no se ha ingresado el grupo'}), 400
+
+    try:
+        grupo = Grupo.query.filter_by(id=grupo_id).first()
+        if not grupo:
+            return jsonify({'error': 'No se ha encontrado el grupo'}), 404
+        if nombre:
+            grupo.nombre = nombre
+
+        db.session.commit()
+
+        return jsonify({'mensaje': 'Grupo editado con éxito', 'data': grupo.to_json()})
+    except Exception as e:
+        return jsonify({'error': f'Error: {e}'}), 500
+
+@grupo.route('/eliminar_grupo', methods=['DELETE'])
+@token_required
+def eliminar_grupo():
+    group_data = request.get_json()
+    try:
+        grupo_id = int(group_data.get('grupo_id', 0))
+        if not grupo_id:
+            raise
+    except Exception as e:
+        return jsonify({'error': 'ID del grupo asignada incorrectamente'}), 400
+
+    try:
+        grupo_eliminado = Grupo.query.filter_by(id=grupo_id).first()
+        if not grupo_eliminado:
+            return jsonify({'error': 'No se ha encontrado el grupo'}), 404
+
+        db.session.delete(grupo_eliminado)
+        db.session.commit()
+
+        return jsonify({'mensaje': 'El grupo ha sido eliminado con éxito', 'data': grupo_eliminado.to_json()}), 200
+
+    except Exception as e:
+        return jsonify({'error': f'Error: {e}'}), 500
 
 @grupo.route('/agregar_miembro', methods=['POST'])
 @token_required
@@ -367,7 +416,6 @@ def crear_zona_segura():
     except Exception as e:
         return jsonify({'error': f'Error al crear zona segura: {str(e)}'}), 500
 
-
 @zona_segura.route('/editar_zona_segura', methods=['PUT'])
 @token_required
 def editar_zona_segura():
@@ -481,6 +529,60 @@ def conseguir_zonas_seguras():
             safe_area_data.append(zona.to_json())
 
         return jsonify({'mensaje': 'Zonas seguras conseguidas con éxito', 'data': safe_area_data}), 200
+
+    except Exception as e:
+        return jsonify({'error': f'Error: {e}'}), 500
+
+@condicion.route('/asignar_condicion', methods=['POST'])
+@token_required
+def asignar_condicion():
+    condition_data = request.get_json()
+    try:
+        condicion_id = condition_data.get('condicion_id')
+        if not condicion_id:
+            return jsonify({'error': 'ID de condicion no asignada'}), 400
+
+        condicion = Condicion.query.get(condicion_id)
+        if not condicion:
+            return jsonify({'error': 'Condicion no encontrada'}), 404
+
+        new_cuenta_condicion = CuentaCondicion.query.filter_by(cuenta_id=condicion.id, condicion_id=condicion_id).first()
+
+        if new_cuenta_condicion:
+            return jsonify({'error': 'Esta condición ya fue asignada previamente'}), 409
+
+        new_cuenta_condicion = CuentaCondicion(
+            cuenta_id=request.user_id,
+            condicion_id=condicion.id,
+        )
+
+        db.session.add(new_cuenta_condicion)
+        db.session.commit()
+        return jsonify({'mensaje': f'condición {condicion.nombre} asignada con éxito', 'data': new_cuenta_condicion.to_json()}), 201
+
+    except Exception as e:
+        return jsonify({'error': f'Error: {e}'}), 500
+
+@condicion.route('/remover_condicion', methods=['DELETE'])
+@token_required
+def remover_condicion():
+    condition_data = request.get_json()
+    try:
+        condicion_id = condition_data.get('condicion_id')
+        if not condicion_id:
+            return jsonify({'error': 'ID de condicion no asignada'}), 400
+        condicion = Condicion.query.get(condicion_id)
+
+        if not condicion:
+            return jsonify({'error': 'Condicion no encontrada'}), 404
+        cuenta_condicion = CuentaCondicion.query.filter_by(cuenta_id=condicion.id, condicion_id=condicion_id).first()
+
+        if not cuenta_condicion:
+            return jsonify({'error': 'Condicion no encontrada en esta cuenta'}), 404
+
+        db.session.delete(cuenta_condicion)
+        db.session.commit()
+        return jsonify({'mensaje': 'Condición removida con éxito', 'data': cuenta_condicion.to_json()}), 200
 
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500

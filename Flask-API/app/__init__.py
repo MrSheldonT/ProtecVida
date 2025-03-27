@@ -12,10 +12,11 @@ def create_app():
     db.init_app(app)
     bcrypt.init_app(app)
 
-    from .routes import cuenta, grupo, zona_segura
+    from .routes import cuenta, grupo, zona_segura, condicion
     app.register_blueprint(cuenta, url_prefix="/cuenta")
     app.register_blueprint(grupo, url_prefix="/grupo")
     app.register_blueprint(zona_segura, url_prefix="/zona_segura")
+    app.register_blueprint(condicion, url_prefix="/condicion")
 
 
     @app.route("/")

@@ -154,3 +154,17 @@ class Alerta(db.Model):
             'fecha': self.fecha,
             'atendida': self.atendida,
         }
+class ubicacion(db.Model):
+    __tablename__ = 'ubicacion'
+    id = db.Column(db.Integer, primary_key=True)
+    cuenta_id = db.Column(db.Integer, db.ForeignKey('cuenta.id'))
+    latitud = db.Column(db.Float, nullable=True)
+    longitud = db.Column(db.Float, nullable=True)
+
+    def to_json(self):
+        return {
+            'ubicacion_id': self.id,
+            'cuenta_id': self.cuenta_id,
+            'latitud': self.latitud,
+            'longitud': self.longitud,
+        }

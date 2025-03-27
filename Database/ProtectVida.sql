@@ -82,3 +82,11 @@ CREATE TABLE alerta (
     , FOREIGN KEY (cuenta_id) REFERENCES cuenta(id) ON DELETE CASCADE
     , FOREIGN KEY (tipo_id) REFERENCES tipo_alerta(id) ON DELETE CASCADE
 );
+
+CREATE TABLE ubicacion(
+     id INT AUTO_INCREMENT PRIMARY KEY
+    , cuenta_id INT
+    , latitud DOUBLE
+    , longitud DOUBLE
+    , FOREIGN KEY (cuenta_id) REFERENCES cuenta(id) ON DELETE CASCADE
+);
