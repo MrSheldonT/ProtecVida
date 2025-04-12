@@ -154,7 +154,7 @@ class Alerta(db.Model):
             'fecha': self.fecha,
             'atendida': self.atendida,
         }
-class ubicacion(db.Model):
+class Ubicacion(db.Model):
     __tablename__ = 'ubicacion'
     id = db.Column(db.Integer, primary_key=True)
     cuenta_id = db.Column(db.Integer, db.ForeignKey('cuenta.id'))

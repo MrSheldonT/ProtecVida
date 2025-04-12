@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from .models import Cuenta, Condicion, CuentaCondicion, Grupo, MiembroGrupo, ZonaSegura, Alerta, TipoAlerta, SignoVital, ubicacion
+from .models import Cuenta, Condicion, CuentaCondicion, Grupo, MiembroGrupo, ZonaSegura, Alerta, TipoAlerta, SignoVital, Ubicacion
 from .extensions import db
 from .utils import check_password, hash_password, create_token_jwt, valid_password, valid_email, token_required
 
@@ -7,6 +7,8 @@ cuenta = Blueprint('cuenta', __name__)
 grupo = Blueprint('grupo', __name__)
 zona_segura = Blueprint('zona_segura', __name__)
 condicion = Blueprint('condicion', __name__)
+signo_vital = Blueprint('signo_vital', __name__)
+ubicacion = Blueprint('ubicacion', __name__)
 
 @cuenta.route('/registrarse', methods=['POST'])
 def crear_cuenta():
@@ -33,7 +35,12 @@ def crear_cuenta():
             correo_electronico=correo,
             hash_contraseña=hash_password(contrasenia),
         )
-
+        registro_ubicacion = Ubicacion(
+            cuenta_id=nueva_cuenta.id,
+            longitud=None,
+            latitud=None,
+        )
+        db.session.add(registro_ubicacion)
         db.session.add(nueva_cuenta)
         db.session.commit()
         return jsonify({'mensaje': 'Cuenta creada exitosamente', 'data': nueva_cuenta.to_json()}), 201
@@ -133,6 +140,18 @@ def editar_cuenta():
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
 
+@cuenta.route('/cambiar_contrasena', methods=['PUT'])
+def cambiar_contrasena():
+    user_data = request.get_json()
+    correo = str(user_data.get('correo_electronico', '')).strip()
+
+    if not correo:
+        return jsonify({'error': 'No se ha ingresado el correo electronico'}), 404
+
+
+
+
+
 @grupo.route('/crear_grupo', methods=['POST'])
 @token_required
 def crear_grupo():
@@ -194,7 +213,7 @@ def eliminar_grupo():
     try:
         grupo_id = int(group_data.get('grupo_id', 0))
         if not grupo_id:
-            raise
+            return jsonify({'error': 'Error, no se ha ingresado el grupo'}), 400
     except Exception as e:
         return jsonify({'error': 'ID del grupo asignada incorrectamente'}), 400
 
@@ -241,7 +260,7 @@ def agregar_miembro():
         db.session.add(grupo_miembro)
         db.session.commit()
 
-        return jsonify({'mensaje': f'Usuario {new_member.nombre} agregado al grupo {grupo_miembro.grupo_id}'}), 200
+        return jsonify({'mensaje': f'Usuario {new_member.nombre} agregado al grupo {grupo_miembro.grupo_id}'}), 201
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
 
@@ -313,6 +332,78 @@ def salir_grupo():
         db.session.delete(miembro)
         db.session.commit()
         return jsonify({'mensaje':'Se ha salido del grupo exitosamente'}), 200
+    except Exception as e:
+        return jsonify({'error': f'Error: {e}'}), 500
+
+@grupo.route('/agregar_administrador', methods=['POST'])
+@token_required
+def agregar_administrador():
+
+    group_data = request.get_json()
+    user_id = int(group_data.get('user_id', 0))
+    grupo_id = int(group_data.get('grupo_id', 0))
+
+    if not user_id:
+        return jsonify({'error': 'No se ha ingresado el usuario del miembro ha eliminar'}), 400
+
+    if not grupo_id:
+        return jsonify({'error': 'No se ha ingresado el grupo'}), 400
+
+    try:
+        current_user = MiembroGrupo.query.filter_by(cuenta_id = request.user_id, grupo_id = grupo_id).first()
+        new_admin = MiembroGrupo.query.filter_by(cuenta_id = user_id, grupo_id = grupo_id).first()
+
+        if not new_admin:
+            return jsonify({'error': 'Error, este usuario no se encuentra en el grupo'}), 404
+
+        if not current_user:
+            return jsonify({'error': 'Error, no estás en este grupo'}), 404
+
+        if current_user.cuenta_id == new_admin.cuenta_id:
+            return jsonify({'error': 'No puedes hacer esta operación con tu propia cuenta'}), 409
+
+        if not current_user.es_administrador:
+            return jsonify({'error': 'Error, usted no es administrador de este grupo'}), 403
+
+        new_admin.es_administrador = True
+        db.session.commit()
+        return jsonify({'mensaje': f'Se ha actualizado los permisos al usuario {new_admin.cuenta_id} exitosamente', 'data': new_admin.to_json()}), 200
+    except Exception as e:
+        return jsonify({'error': f'Error: {e}'}), 500
+
+@grupo.route('/quitar_administrador', methods=['POST'])
+@token_required
+def quitar_administrador():
+
+    group_data = request.get_json()
+    user_id = int(group_data.get('user_id', 0))
+    grupo_id = int(group_data.get('grupo_id', 0))
+
+    if not user_id:
+        return jsonify({'error': 'No se ha ingresado el usuario del miembro ha eliminar'}), 400
+
+    if not grupo_id:
+        return jsonify({'error': 'No se ha ingresado el grupo'}), 400
+
+    try:
+        current_user = MiembroGrupo.query.filter_by(cuenta_id = request.user_id, grupo_id = grupo_id).first()
+        remove_user_admin = MiembroGrupo.query.filter_by(cuenta_id = user_id, grupo_id = grupo_id).first()
+
+        if not remove_user_admin:
+            return jsonify({'error': 'Error, este usuario no se encuentra en el grupo'}), 404
+
+        if not current_user:
+            return jsonify({'error': 'Error, no estás en este grupo'}), 404
+
+        if current_user.cuenta_id == remove_user_admin.cuenta_id:
+            return jsonify({'error': 'No puedes hacer esta operación con tu propia cuenta'}), 409
+
+        if not current_user.es_administrador:
+            return jsonify({'error': 'Error, usted no es administrador de este grupo'}), 403
+
+        remove_user_admin.es_administrador = False
+        db.session.commit()
+        return  jsonify({'mensaje': f'Se ha actualizado los permisos al usuario {remove_user_admin.cuenta_id} exitosamente', 'data': remove_user_admin.to_json()}), 200
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
 
@@ -586,3 +677,113 @@ def remover_condicion():
 
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
+
+@condicion.route('/conseguir_condicion', methods=['GET'])
+@token_required
+def conseguir_condicion():
+    try:
+
+        cuenta_condicion = CuentaCondicion.query.filter_by(
+            cuenta_id=request.user_id
+        ).all()
+
+        return jsonify({'mensaje': 'Condiciones conseguidas con éxito', 'data': 'test'}), 200
+
+    except Exception as e:
+        return jsonify({'error': f'Error: {e}'}), 500
+
+
+signo_vital.route('/registrar_signo', methods=['POST'])
+@token_required
+def registrar_signo():
+    condition_data = request.get_json()
+    try:
+        tipo_id = condition_data.get('tipo_id')
+        if not tipo_id:
+            return jsonify({'error': 'ID del tipo de signo no asignada'}), 400
+        tipo_id = db.session.query.filter_by(tipo_id=tipo_id).first()
+
+        if not tipo_id:
+            return jsonify({'error': 'No se ha encontrado el tipo de signo'}), 404
+
+        valor_numerico_1 = condition_data.get('valor_numerico_1', 0)
+        if not valor_numerico_1:
+            return jsonify({'error': 'No se ingresó el primer valor númerico'}), 400
+
+        valor_numerico_2 = condition_data.get('valor_numerico_2', 0)
+
+        new_signo_vital = SignoVital(
+            cuenta_id=request.user_id,
+            tipo_id=tipo_id,
+            valor_numerico_1=valor_numerico_1,
+        )
+        if valor_numerico_2:
+            new_signo_vital.valor_numerico_2 = valor_numerico_2
+
+        db.session.add(new_signo_vital)
+        db.session.commit()
+
+        return jsonify({'mensaje': 'Signo vital registrado con éxito', 'data': new_signo_vital.to_json()}), 201
+    except Exception as e:
+        return jsonify({'error': f'Error: {e}'}), 500
+
+@signo_vital.route('/conseguir_mis_signos', methods=['GET'])
+@token_required
+def conseguir_mis_signos():
+    try:
+        signos_vitales = db.session.query(SignoVital).filter_by(
+            cuenta_id=request.user_id
+        ).all()
+        signos_vitales_data = []
+        for signo in signos_vitales:
+            signos_vitales_data.append(signo.to_json())
+
+        return jsonify({'mensaje': 'Signos vitales conseguidos con éxito', 'data': signos_vitales_data}), 200
+
+    except Exception as e:
+        return jsonify({'error': f'Error: {e}'}), 500
+
+@signo_vital.route('/conseguir_signos/<int:user_id>', methods=['GET'])
+@token_required
+def conseguir_signos(user_id):
+    try:
+        if not user_id:
+            return jsonify({'error': 'ID de usuario no asignada'}), 400
+
+        grupos_usuario = db.session.query(MiembroGrupo.grupo_id).filter(
+            MiembroGrupo.cuenta_id == user_id
+        ).subquery()
+
+        mis_grupos = db.session.query(MiembroGrupo.grupo_id).filter(
+            MiembroGrupo.cuenta_id == request.user_id
+        ).subquery()
+
+        interseccion_grupos = db.session.query(Grupo.grupo_id).filter(
+            Grupo.grupo_id.in_(mis_grupos)
+        ).filter(
+            Grupo.grupo_id.in_(grupos_usuario)
+        ).all()
+
+        if not interseccion_grupos:
+            return jsonify({'error': 'No tienes ningún grupo en común con este usuario'}), 403
+
+        signos_vitales = db.session.query(SignoVital).filter_by(
+            cuenta_id=user_id
+        ).all()
+
+        signos_vitales_data = []
+        for signo in signos_vitales:
+            signos_vitales_data.append(signo.to_json())
+
+        return jsonify({'mensaje': 'Signos vitales conseguidos con éxito', 'data': signos_vitales_data}), 200
+
+    except Exception as e:
+        return jsonify({'error': f'Error: {e}'}), 500
+
+@ubicacion.route('/actualizar_ubicacion', methods=['POST'])
+def actualizar_ubicacion():
+    try:
+        pass
+    except Exception as e:
+        return jsonify({'error': f'Error: {e}'}), 500
+    ## actualizar los creados a 201 y no 200

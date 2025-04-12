@@ -1,6 +1,9 @@
 from flask import Flask, jsonify
 from .config import Config
-from .extensions import db, bcrypt
+from .extensions import db, bcrypt, socketio, mail
+from flask_mail import Message
+from .utils import token_required, hash_password, create_token_jwt, valid_password, decode_jwt_token
+from .models import Cuenta
 from flask_cors import CORS
 
 def create_app():
@@ -11,17 +14,91 @@ def create_app():
     CORS(app, resources={r"/*": {"origins": "*"}})
     db.init_app(app)
     bcrypt.init_app(app)
+    socketio.init_app(app)
+    mail.init_app(app)
 
-    from .routes import cuenta, grupo, zona_segura, condicion
+    from .routes import cuenta, grupo, zona_segura, condicion, signo_vital
     app.register_blueprint(cuenta, url_prefix="/cuenta")
     app.register_blueprint(grupo, url_prefix="/grupo")
     app.register_blueprint(zona_segura, url_prefix="/zona_segura")
     app.register_blueprint(condicion, url_prefix="/condicion")
+    app.register_blueprint(signo_vital, url_prefix="/signo_vital")
 
 
     @app.route("/")
     def index():
-        return "Hello :D"
+        return "ProtecVida"
+
+    import datetime
+    @app.route('/enviar_token/<email>')
+    def enviar_token(email):
+
+        current_year = datetime.datetime.now().year
+        user = Cuenta.query.filter_by(correo_electronico=email).first()
+        if not user:
+            return jsonify({'error': 'Cuenta no encontrada'}), 404
+
+        token = create_token_jwt(user.id)
+        msg = Message(
+            'Tu enlace de recuperación de contraseña - ProtecVida',
+            sender=email,
+            recipients=[email]
+        )
+
+        html_content = render_template(
+            'email.html',
+            verification_url='localhost:5000/recuperar_contrasenia?token=' + token,
+            year=current_year
+        )
+
+        msg.html = html_content
+
+        try:
+            mail.send(msg)
+            print(f"Token enviado a {email}: {token}")
+            return 'Correo enviado exitosamente.'
+        except Exception as e:
+            print(f"Error al enviar el correo: {e}")
+            return 'Error al enviar el correo.', 500
+
+    from flask import request, render_template
+    @app.route("/recuperar_contrasenia", methods=["GET", "POST"])
+    def recuperar_contrasenia():
+        token = request.args.get("token")
+        if not token:
+            return render_template("reset_password.html", mensaje="No se cargó el token correctamente", token=token)
+
+        if request.method == "POST":
+            password = request.form.get("password")
+            confirm_password = request.form.get("confirm_password")
+
+            if not password or not confirm_password:
+                return render_template("reset_password.html", mensaje="Completa todos los campos.", token=token)
+
+            if password != confirm_password:
+                return render_template("reset_password.html", mensaje="Las contraseñas no coinciden.", token=token)
+
+            is_valid_password, message = valid_password(password)
+            if not is_valid_password:
+                return render_template("reset_password.html", mensaje="La contraseña debe tener al menos 8 caracteres.",
+                                       token=token)
+
+            try:
+                decode_token = decode_jwt_token(token)
+                update_user =  Cuenta.query.filter_by(id=decode_token['user_id']).first()
+                if not update_user:
+                    return render_template("reset_password.html", mensaje="Usuario no encontrado.",token=token)
+
+                update_user.hash_contraseña = hash_password(password)
+                db.session.commit()
+                return render_template("success.html")
+            except Exception as e:
+                print(f"Error al enviar el correo: {e}")
+                return render_template("error.html",
+                                       mensaje="Ocurrió un error al actualizar la contraseña. Por favor intenta nuevamente.")
+
+        return render_template("reset_password.html", token=token)
+
 
     @app.errorhandler(404)
     def page_404(e):
@@ -32,7 +109,7 @@ def create_app():
             """, 404
     @app.errorhandler(500)
     def internal_server_error(e):
-        return jsonify({'error': 'Error interno del servidor'}), 500
+        return jsonify({'error': f'Error interno del servidor {str(e)}'}), 500
 
 
     return app

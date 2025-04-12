@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contraseña Actualizada | ProtecVida</title>
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.png') }}" type="image/png">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <style>
+        :root {
+            --primary: #4285f4;
+            --primary-dark: #3367d6;
+            --success: #34a853;
+            --success-light: #e6f4ea;
+            --gray-50: #f8f9fa;
+            --gray-100: #f1f3f4;
+            --gray-300: #dadce0;
+            --gray-500: #70757a;
+            --gray-700: #444746;
+            --gray-900: #202124;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--gray-50);
+            color: var(--gray-700);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .container {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 400px;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        .logo {
+            width: 80px;
+            height: auto;
+            margin: 1.5rem auto 0.5rem;
+        }
+
+        .success-icon {
+            margin: 0.5rem auto;
+            width: 48px;
+            height: 48px;
+            background-color: var(--success-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .success-content {
+            padding: 0 1.5rem 1.5rem;
+        }
+
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--success);
+            margin-bottom: 0.75rem;
+        }
+
+        p {
+            color: var(--gray-700);
+            margin-bottom: 1.5rem;
+            font-size: 0.9375rem;
+            line-height: 1.5;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 0.625rem 1.5rem;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9375rem;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.15s ease;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 1rem;
+            border-top: 1px solid var(--gray-100);
+            font-size: 0.75rem;
+            color: var(--gray-500);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="{{ url_for('static', filename='images/protec_vida.png') }}" alt="ProtecVida" class="logo">
+
+        <div class="success-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5 13L9 17L19 7" stroke="#34a853" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+
+        <div class="success-content">
+            <h1>¡Contraseña actualizada!</h1>
+            <p>Tu contraseña ha sido restablecida correctamente. Ahora puedes iniciar sesión con tu nueva contraseña.</p>
+            <a href="/" class="btn">Ir al inicio</a>
+        </div>
+
+        <div class="footer">
+            <p>ProtecVida &copy; 2025 - Todos los derechos reservados</p>
+        </div>
+    </div>
+</body>
+</html>

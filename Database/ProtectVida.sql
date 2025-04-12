@@ -78,6 +78,7 @@ CREATE TABLE alerta (
     , cuenta_id INT
     , tipo_id INT NOT NULL
     , fecha DATETIME DEFAULT CURRENT_TIMESTAMP
+    , magnitud VARCHAR(20) NOT NULL
     , atendida BOOLEAN DEFAULT FALSE
     , FOREIGN KEY (cuenta_id) REFERENCES cuenta(id) ON DELETE CASCADE
     , FOREIGN KEY (tipo_id) REFERENCES tipo_alerta(id) ON DELETE CASCADE
@@ -90,3 +91,26 @@ CREATE TABLE ubicacion(
     , longitud DOUBLE
     , FOREIGN KEY (cuenta_id) REFERENCES cuenta(id) ON DELETE CASCADE
 );
+
+INSERT INTO condicion (nombre) VALUES
+('Hipertensión'),
+('Hipotensión'),
+('Taquicardia'),
+('Arritmia');
+
+INSERT INTO tipo_signo_vital (nombre, descripcion, unidad) VALUES
+('Frecuencia cardíaca', 'Número de latidos del corazón por minuto', 'latidos/min'),
+('Presión Arterial sistólica', 'Presión en las arterias cuando el corazón late', 'mmHg'),
+('Presión Arterial diastólica', 'Presión en las arterias cuando el corazón está en reposo', 'mmHg'),
+('Saturación de Oxígeno', 'Porcentaje de oxígeno en la sangre', '%');
+
+INSERT INTO tipo_alerta (nombre) VALUES
+('Frecuencia cardíaca alta'),
+('Frecuencia cardíaca baja'),
+('Presión arterial alta'),
+('Presión arterial baja'),
+('Saturación de oxígeno alta'),
+('Saturación de oxígeno baja'),
+('Caída detectada'),
+('Salida de zona segura'),
+('Frecuencia cardíaca anormal');
