@@ -609,7 +609,7 @@ def conseguir_zonas_seguras():
         miembros_grupo = db.session.query(MiembroGrupo.cuenta_id).filter(
             MiembroGrupo.grupo_id.in_(grupos_usuario),
             MiembroGrupo.cuenta_id != request.user_id
-        ).subquery()
+        ).distinsubquery() # distintic
 
         zonas_seguras = db.session.query(ZonaSegura).filter(
             ZonaSegura.cuenta_id.in_(miembros_grupo)
@@ -623,6 +623,39 @@ def conseguir_zonas_seguras():
 
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
+
+@zona_segura.route('/conseguir_todas_las_zonas_seguras', methods=['GET'])
+@token_required
+def conseguir_todas_las_zonas_seguras():
+    """
+    Devuelve todas las zonas seguras del usuario autenticado y de los miembros de su grupo en una sola lista.
+    """
+    try:
+        zonas_usuario = db.session.query(ZonaSegura).filter_by(cuenta_id=request.user_id)
+
+        grupos_usuario = db.session.query(MiembroGrupo.grupo_id).filter(
+            MiembroGrupo.cuenta_id == request.user_id
+        ).subquery()
+
+        miembros_grupo = db.session.query(MiembroGrupo.cuenta_id).filter(
+            MiembroGrupo.grupo_id.in_(grupos_usuario),
+            MiembroGrupo.cuenta_id != request.user_id
+        ).distinct().subquery()
+
+        zonas_grupo = db.session.query(ZonaSegura).filter(
+            ZonaSegura.cuenta_id.in_(miembros_grupo)
+        )
+
+        todas_las_zonas = zonas_usuario.union(zonas_grupo).all()
+        zonas_data = [zona.to_json() for zona in todas_las_zonas]
+
+        return jsonify({
+            'mensaje': 'Zonas seguras obtenidas con éxito',
+            'zonas_seguras': zonas_data
+        }), 200
+
+    except Exception as e:
+        return jsonify({'error': f'Error al obtener zonas seguras: {str(e)}'}), 500
 
 @condicion.route('/asignar_condicion', methods=['POST'])
 @token_required

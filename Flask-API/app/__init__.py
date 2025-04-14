@@ -5,12 +5,21 @@ from flask_mail import Message
 from .utils import token_required, hash_password, create_token_jwt, valid_password, decode_jwt_token
 from .models import Cuenta
 from flask_cors import CORS
+import os
 
 def create_app():
 
     app = Flask(__name__)
 
     app.config.from_object(Config)
+    app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+    app.config['MAIL_PORT'] = 587
+    app.config['MAIL_USE_TLS'] = True
+    app.config['MAIL_USE_SSL'] = False
+    app.config['MAIL_USERNAME'] = os.getenv("MAIL_USERNAME")
+    app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD")
+    app.config['MAIL_DEFAULT_SENDER'] = os.getenv("MAIL_USERNAME")
+
     CORS(app, resources={r"/*": {"origins": "*"}})
     db.init_app(app)
     bcrypt.init_app(app)
@@ -32,7 +41,7 @@ def create_app():
     import datetime
     @app.route('/enviar_token/<email>')
     def enviar_token(email):
-
+        print(config.MAIL_PASSWORD)
         current_year = datetime.datetime.now().year
         user = Cuenta.query.filter_by(correo_electronico=email).first()
         if not user:
@@ -41,7 +50,7 @@ def create_app():
         token = create_token_jwt(user.id)
         msg = Message(
             'Tu enlace de recuperación de contraseña - ProtecVida',
-            sender=email,
+            sender=os.getenv("MAIL_USERNAME"),
             recipients=[email]
         )
 

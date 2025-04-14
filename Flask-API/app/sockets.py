@@ -1,38 +1,67 @@
 from .extensions import socketio, db
-from .models import Ubicacion
+from .models import Ubicacion, MiembroGrupo, ZonaSegura
+from .utils import detectar_salida_zona
 from flask_socketio import emit
-
 
 @socketio.on('ubicacion')
 def handle_ubicacion(data):
     cuenta_id = data.get("cuenta_id")
     lat = data.get("lat")
     lon = data.get("lon")
+    print("yaaaaa")
 
     if cuenta_id is None or lat is None or lon is None:
         return
 
     try:
+        lat_anterior = None
+        lon_anterior = None
+
         ubicacion = db.session.query(Ubicacion).filter_by(cuenta_id=cuenta_id).first()
-        print("xd")
         if ubicacion:
-            print("entra")
+            lat_anterior = ubicacion.latitud
+            lon_anterior = ubicacion.longitud
             ubicacion.latitud = lat
             ubicacion.longitud = lon
         else:
-            ubicacion = Ubicacion(cuenta_id=cuenta_id, lat=lat, lon=lon)
+            ubicacion = Ubicacion(cuenta_id=cuenta_id, latitud=lat, longitud=lon)
             db.session.add(ubicacion)
 
         db.session.commit()
 
-        print(f"Ubicación recibida para cuenta {cuenta_id}: Lat: {lat}, Lon: {lon}")
-        print(ubicacion.to_json())
+        # Cargar zonas propias y de grupo
+        zonas_usuario = db.session.query(ZonaSegura).filter_by(cuenta_id=cuenta_id)
+
+        grupos_usuario = db.session.query(MiembroGrupo.grupo_id).filter(
+            MiembroGrupo.cuenta_id == cuenta_id
+        ).subquery()
+
+        miembros_grupo = db.session.query(MiembroGrupo.cuenta_id).filter(
+            MiembroGrupo.grupo_id.in_(grupos_usuario),
+            MiembroGrupo.cuenta_id != cuenta_id
+        ).distinct().subquery()
+
+        zonas_grupo = db.session.query(ZonaSegura).filter(
+            ZonaSegura.cuenta_id.in_(miembros_grupo)
+        )
+
+        todas_zonas = zonas_usuario.union(zonas_grupo).all()
+
+        if lat_anterior and lon_anterior:
+            if detectar_salida_zona(lat, lon, lat_anterior, lon_anterior, todas_zonas):
+                print("jaja")
+                emit("ALERTA_SALIDA_ZONA", {
+                    "cuenta_id": cuenta_id,
+                    "lat": lat,
+                    "lon": lon,
+                    "mensaje": "Salió de zona segura"
+                }, broadcast=True)
+
         emit("UBICACION", data, broadcast=True)
 
     except Exception as e:
         print(f"Error al procesar ubicación: {str(e)}")
         emit("ERROR", "Data no transmitida", broadcast=True)
-
 
 @socketio.on('solicitar_ubicacion')
 def handle_solicitar_ubicacion(data):

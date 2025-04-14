@@ -1,3 +1,4 @@
+import math
 import string
 import re
 from functools import wraps
@@ -83,4 +84,31 @@ def valid_date(date):
         return datetime.strptime(date, '%Y-%m-%d').date()
     except ValueError:
         return None
+
+def distancia_aproximada_metros(lat1, lon1, lat2, lon2):
+    """
+    Calcula una distancia aproximada en metros usando una fórmula simplificada.
+    """
+    # 1 grado de latitud = ~111,000 metros
+    # 1 grado de longitud varía con la latitud (~111,000 * cos(lat))
+    lat_dist = (lat2 - lat1) * 111000
+    lon_dist = (lon2 - lon1) * 111000 * math.cos(math.radians((lat1 + lat2) / 2))
+    return math.sqrt(lat_dist ** 2 + lon_dist ** 2)
+
+
+def detectar_salida_zona(lat_actual, lon_actual, lat_anterior, lon_anterior, zonas):
+    for zona in zonas:
+        print(f"Ubicacion anterior: {lat_anterior}, {lat_anterior}")
+        print(f"Ubicacion actual: {lat_actual}, {lon_actual}")
+        d_anterior = distancia_aproximada_metros(lat_anterior, lon_anterior, zona.latitud, zona.longitud)
+        d_actual = distancia_aproximada_metros(lat_actual, lon_actual, zona.latitud, zona.longitud)
+
+        print(f"Distancia anterior: {d_anterior}, Distancia actual: {d_actual}, Radio: {zona.radio}, {zona.to_json()}")
+
+        if d_anterior <= zona.radio and d_actual > zona.radio:
+            print("salio")
+            return True  # Estaba dentro y ahora está fuera
+
+    return False
+
 
