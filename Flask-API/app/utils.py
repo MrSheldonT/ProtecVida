@@ -106,7 +106,6 @@ def detectar_salida_zona(lat_actual, lon_actual, lat_anterior, lon_anterior, zon
         print(f"Distancia anterior: {d_anterior}, Distancia actual: {d_actual}, Radio: {zona.radio}, {zona.to_json()}")
 
         if d_anterior <= zona.radio and d_actual > zona.radio:
-            print("salio")
             return True  # Estaba dentro y ahora está fuera
 
     return False

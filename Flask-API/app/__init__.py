@@ -41,7 +41,6 @@ def create_app():
     import datetime
     @app.route('/enviar_token/<email>')
     def enviar_token(email):
-        print(config.MAIL_PASSWORD)
         current_year = datetime.datetime.now().year
         user = Cuenta.query.filter_by(correo_electronico=email).first()
         if not user:
@@ -64,10 +63,8 @@ def create_app():
 
         try:
             mail.send(msg)
-            print(f"Token enviado a {email}: {token}")
             return 'Correo enviado exitosamente.'
         except Exception as e:
-            print(f"Error al enviar el correo: {e}")
             return 'Error al enviar el correo.', 500
 
     from flask import request, render_template

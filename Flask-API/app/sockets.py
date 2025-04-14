@@ -1,5 +1,5 @@
 from .extensions import socketio, db
-from .models import Ubicacion, MiembroGrupo, ZonaSegura
+from .models import Ubicacion, MiembroGrupo, ZonaSegura, TipoAlerta, Alerta
 from .utils import detectar_salida_zona
 from flask_socketio import emit
 
@@ -8,7 +8,6 @@ def handle_ubicacion(data):
     cuenta_id = data.get("cuenta_id")
     lat = data.get("lat")
     lon = data.get("lon")
-    print("yaaaaa")
 
     if cuenta_id is None or lat is None or lon is None:
         return
@@ -49,13 +48,28 @@ def handle_ubicacion(data):
 
         if lat_anterior and lon_anterior:
             if detectar_salida_zona(lat, lon, lat_anterior, lon_anterior, todas_zonas):
-                print("jaja")
-                emit("ALERTA_SALIDA_ZONA", {
-                    "cuenta_id": cuenta_id,
-                    "lat": lat,
-                    "lon": lon,
-                    "mensaje": "Salió de zona segura"
-                }, broadcast=True)
+                try:
+                    alerta_zona_segura = TipoAlerta.query.filter_by(nombre="Salida de zona segura").first()
+                    if alerta_zona_segura:
+                        new_alerta = Alerta(
+                            cuenta_id=cuenta_id,
+                            tipo_id=alerta_zona_segura.id,
+                            atendida=False,
+                            magnitud="Baja"
+                        )
+                        db.session.add(new_alerta)
+                        db.session.commit()
+
+                    emit("ALERTA_SALIDA_ZONA", {
+                        "cuenta_id": cuenta_id,
+                        "lat": lat,
+                        "lon": lon,
+                        "mensaje": "Salió de zona segura"
+                    }, broadcast=True)
+
+                except Exception as e:
+                    print(f"Error al guardar alerta: {e}")
+                    emit("ERROR", "No se pudo guardar la alerta", broadcast=True)
 
         emit("UBICACION", data, broadcast=True)
 

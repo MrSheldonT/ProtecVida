@@ -105,6 +105,7 @@ INSERT INTO tipo_signo_vital (nombre, descripcion, unidad) VALUES
 ('Saturación de Oxígeno', 'Porcentaje de oxígeno en la sangre', '%');
 
 INSERT INTO tipo_alerta (nombre) VALUES
+('Salida de zona segura'),
 ('Frecuencia cardíaca alta'),
 ('Frecuencia cardíaca baja'),
 ('Presión arterial alta'),
@@ -112,5 +113,4 @@ INSERT INTO tipo_alerta (nombre) VALUES
 ('Saturación de oxígeno alta'),
 ('Saturación de oxígeno baja'),
 ('Caída detectada'),
-('Salida de zona segura'),
 ('Frecuencia cardíaca anormal');

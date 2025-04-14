@@ -144,6 +144,7 @@ class Alerta(db.Model):
     cuenta_id = db.Column(db.Integer, db.ForeignKey('cuenta.id'))
     tipo_id = db.Column(db.Integer, db.ForeignKey('tipo_alerta.id'), nullable=False)
     fecha = db.Column(db.DateTime, default=db.func.current_timestamp())
+    magnitud = db.Column(db.String(20), nullable=False)
     atendida = db.Column(db.Boolean, default=False)
 
     def to_json(self):
@@ -153,6 +154,7 @@ class Alerta(db.Model):
             'tipo_id': self.tipo_id,
             'fecha': self.fecha,
             'atendida': self.atendida,
+            'magnitud': self.magnitud,
         }
 class Ubicacion(db.Model):
     __tablename__ = 'ubicacion'
