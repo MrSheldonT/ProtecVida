@@ -76,7 +76,7 @@ def login_cuenta():
 def conseguir_cuenta():
 
     try:
-        current_account = Cuenta.query.filter_by(id=request.user_id).first(), 200
+        current_account = Cuenta.query.filter_by(id=request.user_id).first()
         if current_account is None:
             return jsonify({'error': 'No se ha encontrado cuenta'}), 404
         return jsonify({'mensaje': 'Información de la cuenta recuperada', 'data': current_account.to_json()}), 200
@@ -259,8 +259,18 @@ def agregar_miembro():
 
         db.session.add(grupo_miembro)
         db.session.commit()
+        # Obtener la información del grupo
+        grupo = Grupo.query.get(grupo_id)
+        if not grupo:
+            return jsonify({'error': 'El grupo no existe'}), 404
 
-        return jsonify({'mensaje': f'Usuario {new_member.nombre} agregado al grupo {grupo_miembro.grupo_id}'}), 201
+        grupo_data = grupo.to_json()
+        miembro_data = grupo_miembro.to_json()
+
+        grupo_data['es_administrador'] = miembro_data.get('es_administrador', False)
+        grupo_data['cuenta'] = new_member.to_json()
+
+        return jsonify({'mensaje': f'Usuario {new_member.nombre} agregado al grupo {grupo_id}','data': grupo_data}), 201
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
 

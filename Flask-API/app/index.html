@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Socket.IO Envío de Ubicación</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+  <h1>Ubicación en tiempo real con Socket.IO</h1>
+
+  <!-- 🔘 Botones existentes -->
+  <button onclick="enviarUbicacion()">📍 Enviar ubicación fija</button>
+  <button onclick="usarGPS()">📡 Usar GPS del navegador</button>
+
+  <hr>
+
+  <!-- 📋 Formulario de envío manual -->
+  <h2>Enviar ubicación personalizada</h2>
+  <form id="ubicacionForm" onsubmit="enviarFormulario(event)">
+    <label>Cuenta ID: <input type="number" id="cuenta_id" required></label><br>
+    <label>Latitud: <input type="number" step="any" id="lat" required></label><br>
+    <label>Longitud: <input type="number" step="any" id="lon" required></label><br>
+    <button type="submit">📤 Enviar Ubicación</button>
+  </form>
+
+  <script>
+    const socket = io("http://localhost:5000");
+
+    socket.on("connect", () => {
+      console.log("🟢 Conectado al servidor");
+    });
+
+    socket.on("UBICACION", data => {
+      console.log("📍 UBICACION recibida:", data);
+    });
+
+    socket.on("ALERTA_SALIDA_ZONA", data => {
+      console.log("🚨 Salida de zona segura:", data);
+    });
+
+    socket.on("ALERTA_ENTRADA_ZONA", data => {
+      console.log("🚨 Entrada de zona segura:", data);
+    });
+
+
+    socket.on("ERROR", msg => {
+      console.error("❌ ERROR:", msg);
+    });
+
+    function enviarUbicacion() {
+      const data = {
+        cuenta_id: 1,
+        lat: 19.432608,
+        lon: -99.133209
+      };
+      console.log("📤 Enviando ubicación fija:", data);
+      socket.emit("ubicacion", data);
+    }
+
+    function usarGPS() {
+      if (!navigator.geolocation) {
+        return console.error("Geolocalización no soportada");
+      }
+
+      navigator.geolocation.getCurrentPosition(pos => {
+        const data = {
+          cuenta_id: 123,
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude
+        };
+        console.log("📤 Enviando ubicación con GPS:", data);
+        socket.emit("ubicacion", data);
+      }, err => {
+        console.error("❌ Error obteniendo GPS:", err.message);
+      });
+    }
+
+    function enviarFormulario(event) {
+      event.preventDefault();
+      const cuenta_id = parseInt(document.getElementById("cuenta_id").value);
+      const lat = parseFloat(document.getElementById("lat").value);
+      const lon = parseFloat(document.getElementById("lon").value);
+
+      const data = { cuenta_id, lat, lon };
+      console.log("📤 Enviando ubicación desde formulario:", data);
+      socket.emit("ubicacion", data);
+    }
+  </script>
+</body>
+</html>
