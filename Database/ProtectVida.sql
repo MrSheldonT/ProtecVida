@@ -1,4 +1,3 @@
-DROP DATABASE ProtecVida ;
 CREATE DATABASE IF NOT EXISTS ProtecVida;
 USE ProtecVida;
 
@@ -105,6 +104,7 @@ INSERT INTO tipo_signo_vital (nombre, descripcion, unidad) VALUES
 ('Saturación de Oxígeno', 'Porcentaje de oxígeno en la sangre', '%');
 
 INSERT INTO tipo_alerta (nombre) VALUES
+('Entrada zona segura'),
 ('Salida de zona segura'),
 ('Frecuencia cardíaca alta'),
 ('Frecuencia cardíaca baja'),
