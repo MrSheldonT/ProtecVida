@@ -42,6 +42,11 @@
       console.log("🚨 Entrada de zona segura:", data);
     });
 
+    socket.on("ULTIMAS_ALERTAS", data => {
+      console.log("🚨 ultimas alertastas:", data);
+    });
+
+
 
     socket.on("ERROR", msg => {
       console.error("❌ ERROR:", msg);

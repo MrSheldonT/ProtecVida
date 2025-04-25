@@ -97,19 +97,19 @@ def distancia_aproximada_metros(lat1, lon1, lat2, lon2):
 
 
 def detectar_cambio_estado(lat_actual, lon_actual, lat_anterior, lon_anterior, zonas):
-    def esta_en_zona(lat, lon):
+    def esta_en_alguna_zona(lat, lon):
         for zona in zonas:
             distancia = distancia_aproximada_metros(lat, lon, zona.latitud, zona.longitud)
             if distancia <= zona.radio:
                 return True
         return False
 
-    estaba_en_zona = esta_en_zona(lat_anterior, lon_anterior)
-    esta_en_zona_ahora = esta_en_zona(lat_actual, lon_actual)
+    en_zona_antes = esta_en_alguna_zona(lat_anterior, lon_anterior)
+    en_zona_ahora = esta_en_alguna_zona(lat_actual, lon_actual)
 
-    if estaba_en_zona and not esta_en_zona_ahora:
-        return "salida"
-    elif not estaba_en_zona and esta_en_zona_ahora:
+    if not en_zona_antes and en_zona_ahora:
         return "entrada"
+    elif en_zona_antes and not en_zona_ahora:
+        return "salida"
     else:
         return None

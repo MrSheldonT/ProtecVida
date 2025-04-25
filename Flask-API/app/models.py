@@ -152,7 +152,7 @@ class Alerta(db.Model):
             'alerta_id': self.id,
             'cuenta_id': self.cuenta_id,
             'tipo_id': self.tipo_id,
-            'fecha': self.fecha,
+            'fecha': self.fecha.strftime("%Y-%m-%d"),
             'atendida': self.atendida,
             'magnitud': self.magnitud,
         }
