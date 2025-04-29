@@ -26,12 +26,13 @@ def create_app():
     socketio.init_app(app)
     mail.init_app(app)
 
-    from .routes import cuenta, grupo, zona_segura, condicion, signo_vital
+    from .routes import cuenta, grupo, zona_segura, condicion, signo_vital,alertas
     app.register_blueprint(cuenta, url_prefix="/cuenta")
     app.register_blueprint(grupo, url_prefix="/grupo")
     app.register_blueprint(zona_segura, url_prefix="/zona_segura")
     app.register_blueprint(condicion, url_prefix="/condicion")
     app.register_blueprint(signo_vital, url_prefix="/signo_vital")
+    app.register_blueprint(alertas, url_prefix="/alertas")
 
 
     @app.route("/")

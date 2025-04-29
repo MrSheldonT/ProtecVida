@@ -9,6 +9,7 @@ zona_segura = Blueprint('zona_segura', __name__)
 condicion = Blueprint('condicion', __name__)
 signo_vital = Blueprint('signo_vital', __name__)
 ubicacion = Blueprint('ubicacion', __name__)
+alertas = Blueprint('alertas', __name__)
 
 @cuenta.route('/registrarse', methods=['POST'])
 def crear_cuenta():
@@ -840,3 +841,49 @@ def actualizar_ubicacion():
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
     ## actualizar los creados a 201 y no 200
+
+@alertas.route('/conseguir_alertas', methods=['GET'])
+@token_required
+def ultimas_alertas():
+    cuenta = Cuenta.query.get(request.user_id)
+        
+    if not cuenta:
+        return jsonify({'error': 'Cuenta no encontrada'}), 404
+
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+
+    grupos_usuario = db.session.query(MiembroGrupo.grupo_id).filter_by(cuenta_id=request.user_id).subquery()
+
+    cuentas_en_grupos = db.session.query(MiembroGrupo.cuenta_id).filter(MiembroGrupo.grupo_id.in_(grupos_usuario)).subquery()
+
+    paginated_alertas = Alerta.query \
+        .filter(Alerta.cuenta_id.in_(cuentas_en_grupos)) \
+        .order_by(Alerta.fecha.desc()) \
+        .paginate(page=page, per_page=per_page, error_out=False)
+
+    resultado = []
+    for alerta in paginated_alertas.items:
+        tipo_alerta = TipoAlerta.query.get(alerta.tipo_id)
+        cuenta = Cuenta.query.get(alerta.cuenta_id)
+
+        resultado.append({
+            'alerta_id': alerta.id,
+            'cuenta_id': alerta.cuenta_id,
+            'tipo_id': alerta.tipo_id,
+            'tipo_alerta': tipo_alerta.nombre if tipo_alerta else "Desconocido",
+            'fecha': alerta.fecha.strftime("%Y-%m-%d %H:%M:%S"),
+            'atendida': alerta.atendida,
+            'magnitud': alerta.magnitud,
+            'usuario': {
+                'nombre': cuenta.nombre if cuenta else "Desconocido",
+                'correo_electronico': cuenta.correo_electronico if cuenta else "N/A"
+            }
+        })
+
+    return jsonify({
+        'pagina_actual': paginated_alertas.page,
+        'total_paginas': paginated_alertas.pages,
+        'total_alertas': paginated_alertas.total,
+        'alertas': resultado
+    })
