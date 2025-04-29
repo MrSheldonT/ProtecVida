@@ -725,12 +725,22 @@ def remover_condicion():
 @token_required
 def conseguir_condicion():
     try:
+        # Buscar la cuenta del usuario que llama al endpoint
+        cuenta = Cuenta.query.get(request.user_id)
+        
+        if not cuenta:
+            return jsonify({'error': 'Cuenta no encontrada'}), 404
 
-        cuenta_condicion = CuentaCondicion.query.filter_by(
-            cuenta_id=request.user_id
-        ).all()
+        # Acceder a sus condiciones
+        condiciones = cuenta.condiciones.all()
 
-        return jsonify({'mensaje': 'Condiciones conseguidas con éxito', 'data': 'test'}), 200
+        # Convertirlas a JSON
+        condiciones_json = [condicion.to_json() for condicion in condiciones]
+
+        return jsonify({
+            'mensaje': 'Condiciones conseguidas con éxito',
+            'data': condiciones_json
+        }), 200
 
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
