@@ -34,13 +34,10 @@
       console.log("📍 UBICACION recibida:", data);
     });
 
-    socket.on("ALERTA_SALIDA_ZONA", data => {
-      console.log("🚨 Salida de zona segura:", data);
+    socket.on("NOTIFICACION", data => {
+      console.log("🚨 Alerta:", data);
     });
 
-    socket.on("ALERTA_ENTRADA_ZONA", data => {
-      console.log("🚨 Entrada de zona segura:", data);
-    });
 
     socket.on("ULTIMAS_ALERTAS", data => {
       console.log("🚨 ultimas alertastas:", data);
