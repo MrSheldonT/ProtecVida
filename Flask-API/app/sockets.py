@@ -64,7 +64,7 @@ def handle_ubicacion(data):
                         db.session.add(new_alerta)
                         db.session.commit()
                   
-                    emit("ALERTA_SALIDA_ZONA", {
+                    emit("NOTIFICACION", {
                         "cuenta_id": cuenta_id,
                         "lat": lat,
                         "lon": lon,
@@ -91,7 +91,7 @@ def handle_ubicacion(data):
                         db.session.add(new_alerta)
                         db.session.commit()
 
-                    emit("ALERTA_ENTRADA_ZONA", {
+                    emit("NOTIFICACION", {
                         "cuenta_id": cuenta_id,
                         "lat": lat,
                         "lon": lon,
