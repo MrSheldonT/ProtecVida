@@ -6,6 +6,8 @@ from .utils import token_required, hash_password, create_token_jwt, valid_passwo
 from .models import Cuenta
 from flask_cors import CORS
 import os
+import firebase_admin
+from firebase_admin import credentials, messaging
 
 def create_app():
 
@@ -19,6 +21,10 @@ def create_app():
     app.config['MAIL_USERNAME'] = os.getenv("MAIL_USERNAME")
     app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD")
     app.config['MAIL_DEFAULT_SENDER'] = os.getenv("MAIL_USERNAME")
+    
+    if not firebase_admin._apps:
+        cred = credentials.Certificate(r'Flask-API\app\protectvida-8f32a-firebase-adminsdk-fbsvc-0efc4f7cd9.json')
+        firebase_admin.initialize_app(cred)
 
     CORS(app, resources={r"/*": {"origins": "*"}})
     db.init_app(app)

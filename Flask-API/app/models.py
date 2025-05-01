@@ -11,6 +11,7 @@ class Cuenta(db.Model):
     altura = db.Column(db.Numeric(5, 2), nullable=True)
     sexo = db.Column(db.Enum('M', 'F', 'Otro'), nullable=True)
     fecha_nacimiento = db.Column(db.Date, nullable=True)
+    fcm_token = db.Column(db.String(255), nullable=True)
 
     def to_json(self):
         return {
@@ -22,6 +23,7 @@ class Cuenta(db.Model):
             'altura': float(self.altura) if self.altura else None,
             'sexo': self.sexo,
             'fecha_nacimiento': self.fecha_nacimiento.isoformat() if self.fecha_nacimiento else None,
+            'fcm_token': self.fcm_token
         }
 
     condiciones = db.relationship('Condicion', secondary='cuenta_condicion', backref='cuentas', lazy='dynamic')

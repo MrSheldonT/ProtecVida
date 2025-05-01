@@ -2,6 +2,8 @@ from .extensions import socketio, db
 from .models import Ubicacion, MiembroGrupo, ZonaSegura, TipoAlerta, Alerta, Cuenta
 from .utils import detectar_cambio_estado
 from flask_socketio import emit
+from firebase_admin import messaging
+
 
 @socketio.on('ubicacion')
 def handle_ubicacion(data):
@@ -63,16 +65,38 @@ def handle_ubicacion(data):
                         )
                         db.session.add(new_alerta)
                         db.session.commit()
-                  
-                    emit("NOTIFICACION", {
+                        emit("NOTIFICACION", {
                         "cuenta_id": cuenta_id,
                         "lat": lat,
                         "lon": lon,
                         "mensaje": f"{nombre_usuario} salió de la zona segura"
-                    }, broadcast=True)
+                          }, broadcast=True)
                     
-                    alertas = ultimas_alertas()
-                    emit('ULTIMAS_ALERTAS', alertas, broadcast=True)
+                        alertas = ultimas_alertas()
+                        emit('ULTIMAS_ALERTAS', alertas, broadcast=True)
+
+                    try:
+                        token_fcm = cuenta.fcm_token 
+
+                        if token_fcm:
+                            # Crear el mensaje FCM
+                            message = messaging.Message(
+                                notification=messaging.Notification(
+                                    title=f"{nombre_usuario} salió de la zona segura",
+                                    body=f"Ubicación: Lat {lat}, Lon {lon}",
+                                ),
+                                token=token_fcm,
+                            )
+                            # Enviar la notificación
+                            response = messaging.send(message)
+                            print(f"Notificación enviada: {response}")
+                        else:
+                            print(f"Token FCM no disponible para el usuario {cuenta_id}")
+
+                    except Exception as e:
+                        print(f"Error al enviar notificación FCM: {e}")
+                  
+                 
 
                 except Exception as e:
                     print(f"Error al guardar alerta: {e}")
@@ -90,8 +114,7 @@ def handle_ubicacion(data):
                         )
                         db.session.add(new_alerta)
                         db.session.commit()
-
-                    emit("NOTIFICACION", {
+                        emit("NOTIFICACION", {
                         "cuenta_id": cuenta_id,
                         "lat": lat,
                         "lon": lon,
@@ -100,7 +123,26 @@ def handle_ubicacion(data):
 
                     alertas = ultimas_alertas()
                     emit('ULTIMAS_ALERTAS', alertas, broadcast=True)
+                    try:
+                        token_fcm = cuenta.fcm_token 
 
+                        if token_fcm:
+                            # Crear el mensaje FCM
+                            message = messaging.Message(
+                                notification=messaging.Notification(
+                                    title=f"{nombre_usuario} volvió a la zona segura",
+                                    body=f"Ubicación: Lat {lat}, Lon {lon}",
+                                ),
+                                token=token_fcm,
+                            )
+                            # Enviar la notificación
+                            response = messaging.send(message)
+                            print(f"Notificación enviada: {response}")
+                        else:
+                            print(f"Token FCM no disponible para el usuario {cuenta_id}")
+
+                    except Exception as e:
+                        print(f"Error al enviar notificación FCM: {e}")
 
                 except Exception as e:
                     print(f"Error al guardar alerta: {e}")

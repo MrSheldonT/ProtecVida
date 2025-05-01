@@ -10,7 +10,8 @@ CREATE TABLE cuenta (
     , peso DECIMAL(5,2)
     , altura DECIMAL(5,2)
     , sexo ENUM('M', 'F', 'Otro')
-    , fecha_nacimiento DATE
+    , fecha_nacimiento DATE,
+    , fcm_token VARCHAR(255) UNIQUE
 );
 
 CREATE TABLE condicion (
