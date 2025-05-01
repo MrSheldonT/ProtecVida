@@ -18,7 +18,8 @@ def crear_cuenta():
     nombre = str(user_data.get('nombre', '')).strip()
     correo = str(user_data.get('correo_electronico', '')).strip()
     contrasenia = str(user_data.get('contrasenia', '')).strip()
-
+    fcm_token = str(user_data.get('fcm_token', '')).strip()
+    
     if not nombre or not correo or not contrasenia:
         return jsonify({'error': 'Faltan parámetros requeridos: nombre, correo_electronico, contrasenia'}), 400
 
@@ -35,6 +36,7 @@ def crear_cuenta():
             nombre=user_data['nombre'],
             correo_electronico=correo,
             hash_contraseña=hash_password(contrasenia),
+            fcm_token=fcm_token 
         )
         registro_ubicacion = Ubicacion(
             cuenta_id=nueva_cuenta.id,
