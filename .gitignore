@@ -8,4 +8,4 @@ src/pictures/
 __pycache__/
 *.py[cod]
 .__pycache__/
-Flask-API/protectvida-8f32a-firebase-adminsdk-fbsvc-0efc4f7cd9.json
+Flask-API/app/protectvida-8f32a-firebase-adminsdk-fbsvc-0efc4f7cd9.json
