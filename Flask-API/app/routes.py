@@ -56,6 +56,7 @@ def login_cuenta():
     user_data = request.get_json()
     correo = str(user_data.get('correo_electronico', '')).strip()
     contrasenia = str(user_data.get('contrasenia', '')).strip()
+    token_fcm = str(user_data.get('token_fcm', '')).strip()
 
     if not correo or not contrasenia:
         return jsonify({'error': 'El correo y la contraseña son obligatorios'}), 400
@@ -67,6 +68,9 @@ def login_cuenta():
             return jsonify({'error': 'No se ha encontrado la cuenta'}), 404
 
         if check_password(contrasenia, user.hash_contraseña):
+            if token_fcm:
+                user.fcm_token = token_fcm
+                db.session.commit()
             return jsonify({'mensaje': 'Logueado correctamente', 'jwt_token': create_token_jwt(user.id)}), 200
         else:
             return jsonify({'error': 'Contraseña incorrecta'}), 401
