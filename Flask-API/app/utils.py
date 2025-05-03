@@ -2,7 +2,7 @@ import math
 import string
 import re
 from functools import wraps
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from flask import current_app, jsonify, request
 from flask_bcrypt import Bcrypt
 import jwt
@@ -23,11 +23,12 @@ def check_password(password:str, hashed_password:str):
         return False
 
 def create_token_jwt(user_id):
-    expiration_time = datetime.utcnow() + timedelta(seconds=current_app.config['JWT_EXPIRATION_TIME'])
+    expiration_time = datetime.now(timezone.utc) + timedelta(seconds=current_app.config['JWT_EXPIRATION_TIME'])
+    iat = datetime.now(timezone.utc) 
     payload = {
         'user_id':user_id,
         'exp': expiration_time,
-        'iat': datetime.utcnow(),
+        'iat': iat,
     }
     token = jwt.encode(payload, current_app.config["SECRET_KEY"], algorithm="HS256")
 

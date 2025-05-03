@@ -9,21 +9,26 @@ import os
 import firebase_admin
 from firebase_admin import credentials, messaging
 
-def create_app():
+def create_app(test_config=None):
 
+# Si no se proporciona fcm_token, asignar un valor predeterminado de None
     app = Flask(__name__)
 
-    app.config.from_object(Config)
-    app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-    app.config['MAIL_PORT'] = 587
-    app.config['MAIL_USE_TLS'] = True
-    app.config['MAIL_USE_SSL'] = False
-    app.config['MAIL_USERNAME'] = os.getenv("MAIL_USERNAME")
-    app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD")
-    app.config['MAIL_DEFAULT_SENDER'] = os.getenv("MAIL_USERNAME")
+    if test_config:
+        app.config.update(test_config)
+    else:
+        app.config.from_object(Config)
+        app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+        app.config['MAIL_PORT'] = 587
+        app.config['MAIL_USE_TLS'] = True
+        app.config['MAIL_USE_SSL'] = False
+        app.config['MAIL_USERNAME'] = os.getenv("MAIL_USERNAME")
+        app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD")
+        app.config['MAIL_DEFAULT_SENDER'] = os.getenv("MAIL_USERNAME")
     
     if not firebase_admin._apps:
-        cred = credentials.Certificate(r'Flask-API\app\protectvida-8f32a-firebase-adminsdk-fbsvc-0efc4f7cd9.json')
+        cred_path = os.path.join(os.path.dirname(__file__),'protectvida-8f32a-firebase-adminsdk-fbsvc-0efc4f7cd9.json')
+        cred = credentials.Certificate(cred_path)
         firebase_admin.initialize_app(cred)
 
     CORS(app, resources={r"/*": {"origins": "*"}})

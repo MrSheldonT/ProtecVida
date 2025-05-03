@@ -13,13 +13,13 @@ alertas = Blueprint('alertas', __name__)
 
 @cuenta.route('/registrarse', methods=['POST'])
 def crear_cuenta():
-
     user_data = request.get_json()
     nombre = str(user_data.get('nombre', '')).strip()
     correo = str(user_data.get('correo_electronico', '')).strip()
     contrasenia = str(user_data.get('contrasenia', '')).strip()
-    fcm_token = str(user_data.get('fcm_token', '')).strip()
-    
+
+    fcm_token = str(user_data.get('fcm_token', None)).strip() if 'fcm_token' in user_data else None
+
     if not nombre or not correo or not contrasenia:
         return jsonify({'error': 'Faltan parámetros requeridos: nombre, correo_electronico, contrasenia'}), 400
 
@@ -29,14 +29,14 @@ def crear_cuenta():
     is_valid_password, message = valid_password(contrasenia)
 
     if not valid_email(correo) or not is_valid_password:
-        return jsonify({'error': 'Correo o contraseña inválidos ({message})'}), 409
+        return jsonify({'error': f'Correo o contraseña inválidos ({message})'}), 409
 
     try:
         nueva_cuenta = Cuenta(
             nombre=user_data['nombre'],
             correo_electronico=correo,
             hash_contraseña=hash_password(contrasenia),
-            fcm_token=fcm_token 
+            fcm_token=fcm_token  # Si no se pasó un token, se guardará como None
         )
         registro_ubicacion = Ubicacion(
             cuenta_id=nueva_cuenta.id,
@@ -49,6 +49,7 @@ def crear_cuenta():
         return jsonify({'mensaje': 'Cuenta creada exitosamente', 'data': nueva_cuenta.to_json()}), 201
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
+
 
 @cuenta.route('/acceder', methods=['POST'])
 def login_cuenta():
