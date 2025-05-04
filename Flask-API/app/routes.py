@@ -11,6 +11,7 @@ signo_vital = Blueprint('signo_vital', __name__)
 ubicacion = Blueprint('ubicacion', __name__)
 alertas = Blueprint('alertas', __name__)
 
+# testeado
 @cuenta.route('/registrarse', methods=['POST'])
 def crear_cuenta():
     user_data = request.get_json()
@@ -50,7 +51,7 @@ def crear_cuenta():
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
 
-
+#testeado
 @cuenta.route('/acceder', methods=['POST'])
 def login_cuenta():
 
@@ -79,6 +80,7 @@ def login_cuenta():
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
 
+#testeado
 @cuenta.route('/conseguir_cuenta', methods=['GET'])
 @token_required
 def conseguir_cuenta():
@@ -91,7 +93,7 @@ def conseguir_cuenta():
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
 
-
+#testeado
 @cuenta.route('/editar_perfil', methods=['PUT'])
 @token_required
 def editar_cuenta():
@@ -158,8 +160,7 @@ def cambiar_contrasena():
 
 
 
-
-
+#testeado
 @grupo.route('/crear_grupo', methods=['POST'])
 @token_required
 def crear_grupo():
@@ -190,6 +191,7 @@ def crear_grupo():
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
 
+#testeado
 @grupo.route('/editar_grupo', methods=['PUT'])
 @token_required
 def editar_grupo():
@@ -214,6 +216,7 @@ def editar_grupo():
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
 
+#testeado
 @grupo.route('/eliminar_grupo', methods=['DELETE'])
 @token_required
 def eliminar_grupo():
@@ -238,6 +241,7 @@ def eliminar_grupo():
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
 
+#testeado
 @grupo.route('/agregar_miembro', methods=['POST'])
 @token_required
 def agregar_miembro():
@@ -282,6 +286,8 @@ def agregar_miembro():
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
 
+
+#testeado
 @grupo.route('/eliminar_miembro', methods=['DELETE'])
 @token_required
 def eliminar_miembro():
@@ -321,6 +327,7 @@ def eliminar_miembro():
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
 
+#testeado
 @grupo.route('/salir_grupo', methods=['DELETE'])
 @token_required
 def salir_grupo():
@@ -353,6 +360,7 @@ def salir_grupo():
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
 
+#testeado
 @grupo.route('/agregar_administrador', methods=['POST'])
 @token_required
 def agregar_administrador():
@@ -389,6 +397,7 @@ def agregar_administrador():
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
 
+#testeado
 @grupo.route('/quitar_administrador', methods=['POST'])
 @token_required
 def quitar_administrador():
@@ -449,6 +458,7 @@ def listar_grupos():
         return jsonify({'error': f'Error: {e}'}), 500
 
 
+#testeado
 @grupo.route('/conseguir_miembros_grupo/<int:grupo_id>', methods=['GET'])
 @token_required
 def listar_miembros_grupo(grupo_id):
@@ -481,6 +491,7 @@ def listar_miembros_grupo(grupo_id):
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
 
+#testeado
 @zona_segura.route('/crear_zona_segura', methods=['POST'])
 @token_required
 def crear_zona_segura():
