@@ -1,5 +1,5 @@
 from .extensions import socketio, db
-from .models import Ubicacion, MiembroGrupo, ZonaSegura, TipoAlerta, Alerta, Cuenta
+from .models import Ubicacion, MiembroGrupo, ZonaSegura, TipoAlerta, Alerta, Cuenta,Dispositivo
 from .utils import detectar_cambio_estado
 from flask_socketio import emit
 from firebase_admin import messaging
@@ -10,42 +10,56 @@ def handle_ubicacion(data):
     cuenta_id = data.get("cuenta_id")
     lat = data.get("lat")
     lon = data.get("lon")
+    dispositivos = data.get("dispositivos", [])
 
-    if cuenta_id is None or lat is None or lon is None:
+    if not all([cuenta_id, lat, lon]):
         return
 
     try:
-        lat_anterior = None
-        lon_anterior = None
-
         ubicacion = db.session.query(Ubicacion).filter_by(cuenta_id=cuenta_id).first()
+        lat_anterior = ubicacion.latitud if ubicacion else None
+        lon_anterior = ubicacion.longitud if ubicacion else None
+
         if ubicacion:
-            lat_anterior = ubicacion.latitud
-            lon_anterior = ubicacion.longitud
             ubicacion.latitud = lat
             ubicacion.longitud = lon
         else:
             ubicacion = Ubicacion(cuenta_id=cuenta_id, latitud=lat, longitud=lon)
             db.session.add(ubicacion)
 
+        for dispositivo_data in dispositivos:
+            direccion_mac = dispositivo_data.get("direccion_mac")
+            if not direccion_mac:
+                continue
+
+            dispositivo = db.session.query(Dispositivo).filter_by(direccion_mac=direccion_mac).first()
+            if dispositivo:
+                dispositivo.porcentaje = dispositivo_data.get("porcentaje")
+                dispositivo.nombre = dispositivo_data.get("nombre")
+                dispositivo.tipo = dispositivo_data.get("tipo")
+                dispositivo.ultima_act = db.func.current_timestamp()
+            else:
+                nuevo_disp = Dispositivo(
+                    cuenta_id=cuenta_id,
+                    direccion_mac=direccion_mac,
+                    porcentaje=dispositivo_data.get("porcentaje"),
+                    nombre=dispositivo_data.get("nombre"),
+                    tipo=dispositivo_data.get("tipo")
+                )
+                db.session.add(nuevo_disp)
+
         db.session.commit()
 
         zonas_usuario = db.session.query(ZonaSegura).filter_by(cuenta_id=cuenta_id)
+        grupos_usuario = db.session.query(MiembroGrupo.grupo_id).filter_by(cuenta_id=cuenta_id).distinct().all()
+        grupo_ids = [g.grupo_id for g in grupos_usuario]
 
-        grupos_usuario = db.session.query(MiembroGrupo.grupo_id).filter(
-            MiembroGrupo.cuenta_id == cuenta_id
-        ).distinct().all()  
-
-        grupos_usuario_ids = [grupo.grupo_id for grupo in grupos_usuario]  
         miembros_grupo = db.session.query(MiembroGrupo.cuenta_id).filter(
-            MiembroGrupo.grupo_id.in_(grupos_usuario_ids),
+            MiembroGrupo.grupo_id.in_(grupo_ids),
             MiembroGrupo.cuenta_id != cuenta_id
-        ).distinct().all() 
-
-        miembros_grupo_ids = [miembro.cuenta_id for miembro in miembros_grupo]
-        zonas_grupo = db.session.query(ZonaSegura).filter(
-            ZonaSegura.cuenta_id.in_(miembros_grupo_ids)
-        )
+        ).distinct().all()
+        miembros_ids = [m.cuenta_id for m in miembros_grupo]
+        zonas_grupo = db.session.query(ZonaSegura).filter(ZonaSegura.cuenta_id.in_(miembros_ids))
 
         todas_zonas = zonas_usuario.union(zonas_grupo).all()
 
@@ -53,108 +67,56 @@ def handle_ubicacion(data):
             cuenta = db.session.query(Cuenta).filter_by(id=cuenta_id).first()
             nombre_usuario = cuenta.nombre if cuenta else "Desconocido"
             cambio = detectar_cambio_estado(lat, lon, lat_anterior, lon_anterior, todas_zonas)
-            if cambio == "salida":
+
+            if cambio in ["salida", "entrada"]:
+                mensaje = f"{nombre_usuario} {'salió de' if cambio == 'salida' else 'volvió a'} la zona segura"
+                tipo_alerta_nombre = "Salida de zona segura" if cambio == "salida" else "Entrada zona segura"
                 try:
-                    alerta_zona_segura = TipoAlerta.query.filter_by(nombre="Salida de zona segura").first()
-                    if alerta_zona_segura:
-                        new_alerta = Alerta(
+                    tipo_alerta = TipoAlerta.query.filter_by(nombre=tipo_alerta_nombre).first()
+                    if tipo_alerta:
+                        nueva_alerta = Alerta(
                             cuenta_id=cuenta_id,
-                            tipo_id=alerta_zona_segura.id,
+                            tipo_id=tipo_alerta.id,
                             atendida=False,
                             magnitud="Baja"
                         )
-                        db.session.add(new_alerta)
+                        db.session.add(nueva_alerta)
                         db.session.commit()
+
                         emit("NOTIFICACION", {
-                        "cuenta_id": cuenta_id,
-                        "lat": lat,
-                        "lon": lon,
-                        "mensaje": f"{nombre_usuario} salió de la zona segura"
-                          }, broadcast=True)
-                    
-                        alertas = ultimas_alertas()
-                        emit('ULTIMAS_ALERTAS', alertas, broadcast=True)
+                            "cuenta_id": cuenta_id,
+                            "lat": lat,
+                            "lon": lon,
+                            "mensaje": mensaje
+                        }, broadcast=True)
 
-                    try:
-                        token_fcm = cuenta.fcm_token 
+                        emit('ULTIMAS_ALERTAS', ultimas_alertas(), broadcast=True)
 
-                        if token_fcm:
-                            # Crear el mensaje FCM
-                            message = messaging.Message(
-                                notification=messaging.Notification(
-                                    title=f"{nombre_usuario} salió de la zona segura",
-                                    body=f"Ubicación: Lat {lat}, Lon {lon}",
-                                ),
-                                token=token_fcm,
-                            )
-                            # Enviar la notificación
-                            response = messaging.send(message)
-                            print(f"Notificación enviada: {response}")
+                        if cuenta and cuenta.fcm_token:
+                            try:
+                                message = messaging.Message(
+                                    notification=messaging.Notification(
+                                        title=mensaje,
+                                        body=f"Ubicación: Lat {lat}, Lon {lon}",
+                                    ),
+                                    token=cuenta.fcm_token,
+                                )
+                                response = messaging.send(message)
+                                print(f"Notificación enviada: {response}")
+                            except Exception as fcm_error:
+                                print(f"Error al enviar notificación FCM: {fcm_error}")
                         else:
-                            print(f"Token FCM no disponible para el usuario {cuenta_id}")
-
-                    except Exception as e:
-                        print(f"Error al enviar notificación FCM: {e}")
-                  
-                 
-
-                except Exception as e:
-                    print(f"Error al guardar alerta: {e}")
+                            print(f"Token FCM no disponible para cuenta_id={cuenta_id}")
+                except Exception as alerta_error:
+                    print(f"Error al guardar alerta: {alerta_error}")
                     emit("ERROR", "No se pudo guardar la alerta", broadcast=True)
 
-            elif cambio == "entrada":
-                try:
-                    alerta_zona_segura = TipoAlerta.query.filter_by(nombre="Entrada zona segura").first()
-                    if alerta_zona_segura:
-                        new_alerta = Alerta(
-                            cuenta_id=cuenta_id,
-                            tipo_id=alerta_zona_segura.id,
-                            atendida=False,
-                            magnitud="Baja"
-                        )
-                        db.session.add(new_alerta)
-                        db.session.commit()
-                        emit("NOTIFICACION", {
-                        "cuenta_id": cuenta_id,
-                        "lat": lat,
-                        "lon": lon,
-                        "mensaje": f"{nombre_usuario} volvió a la zona segura"
-                    }, broadcast=True)
-
-                    alertas = ultimas_alertas()
-                    emit('ULTIMAS_ALERTAS', alertas, broadcast=True)
-                    try:
-                        token_fcm = cuenta.fcm_token 
-
-                        if token_fcm:
-                            # Crear el mensaje FCM
-                            message = messaging.Message(
-                                notification=messaging.Notification(
-                                    title=f"{nombre_usuario} volvió a la zona segura",
-                                    body=f"Ubicación: Lat {lat}, Lon {lon}",
-                                ),
-                                token=token_fcm,
-                            )
-                            # Enviar la notificación
-                            response = messaging.send(message)
-                            print(f"Notificación enviada: {response}")
-                        else:
-                            print(f"Token FCM no disponible para el usuario {cuenta_id}")
-
-                    except Exception as e:
-                        print(f"Error al enviar notificación FCM: {e}")
-
-                except Exception as e:
-                    print(f"Error al guardar alerta: {e}")
-                    emit("ERROR", "No se pudo guardar la alerta", broadcast=True)
-
-            
-        # Emitir la nueva ubicación
         emit("UBICACION", data, broadcast=True)
 
-    except Exception as e:
-        print(f"Error al procesar ubicación: {str(e)}")
+    except Exception as general_error:
+        print(f"Error al procesar ubicación: {general_error}")
         emit("ERROR", "Data no transmitida", broadcast=True)
+
 
 
 @socketio.on('solicitar_ubicacion')

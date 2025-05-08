@@ -31,6 +31,32 @@ class Cuenta(db.Model):
     signos_vitales = db.relationship('SignoVital', backref='cuenta', lazy=True)
     alertas = db.relationship('Alerta', backref='cuenta', lazy=True)
 
+class Dispositivo(db.Model):
+    __tablename__ = 'dispositivo'
+    
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    cuenta_id = db.Column(db.Integer, db.ForeignKey('cuenta.id', ondelete='CASCADE'), nullable=False)
+    nombre = db.Column(db.String(100), nullable=True)
+    porcentaje = db.Column(db.Integer, nullable=True)
+    ultima_act = db.Column(db.DateTime, default=db.func.current_timestamp())
+    tipo = db.Column(db.Enum('Telefono', 'Reloj', 'Anillo', 'Banda'), nullable=True)
+    direccion_mac = db.Column(db.String(17), unique=True, nullable=True)  # XX:XX:XX:XX:XX:XX
+
+    cuenta = db.relationship('Cuenta', backref=db.backref('dispositivos', lazy=True))
+
+    def to_json(self):
+        return {
+            'dispositivo_id': self.id,
+            'cuenta_id': self.cuenta_id,
+            'nombre': self.nombre,
+            'porcentaje': self.porcentaje,
+            'ultima_act': self.ultima_act.isoformat() if self.ultima_act else None,
+            'tipo': self.tipo,
+            'direccion_mac': self.direccion_mac
+        }
+
+
+
 class Condicion(db.Model):
     __tablename__ = 'condicion'
     id = db.Column(db.Integer, primary_key=True)

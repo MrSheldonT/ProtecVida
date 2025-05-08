@@ -14,6 +14,17 @@ CREATE TABLE cuenta (
     , fcm_token VARCHAR(255) UNIQUE
 );
 
+CREATE TABLE dispositivo (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cuenta_id INT,
+    nombre VARCHAR(100),
+    porcentaje INT,
+    ultima_act DATETIME DEFAULT CURRENT_TIMESTAMP,
+    tipo ENUM('Telefono','Reloj','Anillo','Banda'),
+    direccion_mac VARCHAR(17) UNIQUE,
+    FOREIGN KEY (cuenta_id) REFERENCES cuenta(id) ON DELETE CASCADE
+);
+
 CREATE TABLE condicion (
     id INT AUTO_INCREMENT PRIMARY KEY
     , nombre VARCHAR(100) UNIQUE NOT NULL
