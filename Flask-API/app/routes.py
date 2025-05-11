@@ -695,28 +695,42 @@ def asignar_condicion():
     try:
         condicion_id = condition_data.get('condicion_id')
         if not condicion_id:
-            return jsonify({'error': 'ID de condicion no asignada'}), 400
+            return jsonify({'error': 'ID de condición no proporcionado'}), 400
 
+        # Verificar si la condición existe
         condicion = Condicion.query.get(condicion_id)
         if not condicion:
-            return jsonify({'error': 'Condicion no encontrada'}), 404
+            return jsonify({'error': 'Condición no encontrada'}), 404
 
-        new_cuenta_condicion = CuentaCondicion.query.filter_by(cuenta_id=condicion.id, condicion_id=condicion_id).first()
-
-        if new_cuenta_condicion:
-            return jsonify({'error': 'Esta condición ya fue asignada previamente'}), 409
-
-        new_cuenta_condicion = CuentaCondicion(
+        # Verificar si ya está asignada
+        existe = CuentaCondicion.query.filter_by(
             cuenta_id=request.user_id,
-            condicion_id=condicion.id,
-        )
+            condicion_id=condicion_id
+        ).first()
 
-        db.session.add(new_cuenta_condicion)
+        if existe:
+            return jsonify({
+                'error': 'Esta condición ya está asignada',
+                'data': existe.to_json()
+            }), 409
+
+        # Crear nueva relación
+        nueva_relacion = CuentaCondicion(
+            cuenta_id=request.user_id,
+            condicion_id=condicion_id
+        )
+        
+        db.session.add(nueva_relacion)
         db.session.commit()
-        return jsonify({'mensaje': f'condición {condicion.nombre} asignada con éxito', 'data': new_cuenta_condicion.to_json()}), 201
+
+        return jsonify({
+            'mensaje': f'Condición "{condicion.nombre}" asignada con éxito',
+            'data': nueva_relacion.to_json()
+        }), 201
 
     except Exception as e:
-        return jsonify({'error': f'Error: {e}'}), 500
+        db.session.rollback()
+        return jsonify({'error': f'Error: {str(e)}'}), 500
 
 @condicion.route('/remover_condicion', methods=['DELETE'])
 @token_required
@@ -800,6 +814,80 @@ def registrar_signo():
         return jsonify({'mensaje': 'Signo vital registrado con éxito', 'data': new_signo_vital.to_json()}), 201
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
+
+
+@condicion.route('/actualizar_condiciones', methods=['PUT'])
+@token_required
+def actualizar_condiciones():
+    try:
+        data = request.get_json()
+        condiciones_ids = data.get('condiciones_ids', [])
+        
+        if not isinstance(condiciones_ids, list):
+            return jsonify({'error': 'condiciones_ids debe ser una lista'}), 400
+
+        # Validar que el usuario existe
+        cuenta = Cuenta.query.get(request.user_id)
+        if not cuenta:
+            return jsonify({'error': 'Cuenta no encontrada'}), 404
+
+        # Validar que todas las condiciones existan
+        condiciones_existentes = Condicion.query.filter(Condicion.id.in_(condiciones_ids)).all()
+        if len(condiciones_existentes) != len(condiciones_ids):
+            ids_existentes = [c.id for c in condiciones_existentes]
+            ids_no_encontrados = [id for id in condiciones_ids if id not in ids_existentes]
+            return jsonify({
+                'error': 'Algunas condiciones no existen',
+                'condiciones_no_encontradas': ids_no_encontrados
+            }), 404
+
+        # Obtener transacción activa
+        if not db.session.is_active:
+            db.session.begin()
+
+        # Eliminar relaciones existentes
+        CuentaCondicion.query.filter_by(cuenta_id=request.user_id).delete()
+
+        # Crear nuevas relaciones
+        nuevas_relaciones = []
+        for condicion_id in condiciones_ids:
+            nueva_relacion = CuentaCondicion(
+                cuenta_id=request.user_id,
+                condicion_id=condicion_id
+            )
+            db.session.add(nueva_relacion)
+            nuevas_relaciones.append(nueva_relacion)
+
+        db.session.commit()
+
+        # Obtener nombres de condiciones para la respuesta
+        condiciones_actualizadas = []
+        for rel in nuevas_relaciones:
+            condicion = next((c for c in condiciones_existentes if c.id == rel.condicion_id), None)
+            if condicion:
+                condiciones_actualizadas.append({
+                    'condicion_id': condicion.id,
+                    'nombre': condicion.nombre
+                })
+
+        return jsonify({
+            'mensaje': 'Condiciones actualizadas con éxito',
+            'data': {
+                'cuenta_id': cuenta.id,
+                'condiciones': condiciones_actualizadas,
+                'total_condiciones': len(condiciones_actualizadas)
+            }
+        }), 200
+
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        app.logger.error(f"Error de base de datos: {str(e)}")
+        return jsonify({'error': 'Error al actualizar condiciones en la base de datos'}), 500
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error inesperado: {str(e)}")
+        return jsonify({'error': 'Error inesperado al procesar la solicitud'}), 500
 
 @signo_vital.route('/conseguir_mis_signos', methods=['GET'])
 @token_required
