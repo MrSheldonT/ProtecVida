@@ -1,91 +1,92 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Socket.IO Envío de Ubicación</title>
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <meta charset="UTF-8" />
+  <title>Simulación de Usuarios Socket.IO</title>
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+  <style>
+    .usuario {
+      border: 1px solid #ccc;
+      margin: 1rem 0;
+      padding: 1rem;
+    }
+    pre {
+      background: #f8f8f8;
+      padding: 0.5rem;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+  </style>
 </head>
 <body>
-  <h1>Ubicación en tiempo real con Socket.IO</h1>
+  <h1>Simulación de Usuarios</h1>
+  <input type="number" id="nuevoUsuarioId" placeholder="ID de Usuario" />
+  <button onclick="agregarUsuario()">Agregar Usuario</button>
 
-  <!-- 🔘 Botones existentes -->
-  <button onclick="enviarUbicacion()">📍 Enviar ubicación fija</button>
-  <button onclick="usarGPS()">📡 Usar GPS del navegador</button>
-
-  <hr>
-
-  <!-- 📋 Formulario de envío manual -->
-  <h2>Enviar ubicación personalizada</h2>
-  <form id="ubicacionForm" onsubmit="enviarFormulario(event)">
-    <label>Cuenta ID: <input type="number" id="cuenta_id" required></label><br>
-    <label>Latitud: <input type="number" step="any" id="lat" required></label><br>
-    <label>Longitud: <input type="number" step="any" id="lon" required></label><br>
-    <button type="submit">📤 Enviar Ubicación</button>
-  </form>
+  <div id="usuarios"></div>
 
   <script>
-    const socket = io("http://localhost:5000");
+    let usuarios = {};
 
-    socket.on("connect", () => {
-      console.log("🟢 Conectado al servidor");
-    });
+    function agregarUsuario() {
+      const cuenta_id = parseInt(document.getElementById("nuevoUsuarioId").value);
+      if (!cuenta_id || usuarios[cuenta_id]) return;
 
-    socket.on("UBICACION", data => {
-      console.log("📍 UBICACION recibida:", data);
-    });
+      const socket = io("http://localhost:5000");
 
-    socket.on("NOTIFICACION", data => {
-      console.log("🚨 Alerta:", data);
-    });
+      // Crear UI para el nuevo usuario
+      const div = document.createElement("div");
+      div.className = "usuario";
+      div.id = `usuario-${cuenta_id}`;
+      div.innerHTML = `
+        <h3>Usuario ${cuenta_id}</h3>
+        <button onclick="conectar(${cuenta_id})">Conectar</button>
+        <button onclick="enviarUbicacion(${cuenta_id})">Enviar Ubicación</button>
+        <button onclick="obtenerUbicacionesGrupo(${cuenta_id})">Obtener Grupo</button>
+        <pre id="log-${cuenta_id}"></pre>
+      `;
+      document.getElementById("usuarios").appendChild(div);
 
-
-    socket.on("ULTIMAS_ALERTAS", data => {
-      console.log("🚨 ultimas alertastas:", data);
-    });
-
-
-
-    socket.on("ERROR", msg => {
-      console.error("❌ ERROR:", msg);
-    });
-
-    function enviarUbicacion() {
-      const data = {
-        cuenta_id: 1,
-        lat: 19.432608,
-        lon: -99.133209
-      };
-      console.log("📤 Enviando ubicación fija:", data);
-      socket.emit("ubicacion", data);
-    }
-
-    function usarGPS() {
-      if (!navigator.geolocation) {
-        return console.error("Geolocalización no soportada");
+      // Función de log para este usuario
+      function log(msg) {
+        const pre = document.getElementById(`log-${cuenta_id}`);
+        pre.textContent += `${JSON.stringify(msg, null, 2)}\n`;
       }
 
-      navigator.geolocation.getCurrentPosition(pos => {
-        const data = {
-          cuenta_id: 123,
-          lat: pos.coords.latitude,
-          lon: pos.coords.longitude
-        };
-        console.log("📤 Enviando ubicación con GPS:", data);
-        socket.emit("ubicacion", data);
-      }, err => {
-        console.error("❌ Error obteniendo GPS:", err.message);
+      // Escuchar eventos
+      socket.on("connect", () => log({ evento: "connect", id: cuenta_id }));
+      socket.on("user_connected", (data) => log({ evento: "user_connected", data }));
+      socket.on("UBICACION", (data) => log({ evento: "UBICACION", data }));
+      socket.on("UBICACION_ACTUALIZADA", (data) => log({ evento: "UBICACION_ACTUALIZADA", data }));
+      socket.on("UBICACIONES_GRUPO", (data) => log({ evento: "UBICACIONES_GRUPO", data }));
+      socket.on("NOTIFICACION", (data) => log({ evento: "NOTIFICACION", data }));
+      socket.on("ULTIMAS_ALERTAS", (data) => log({ evento: "ULTIMAS_ALERTAS", data }));
+      socket.on("ERROR", (error) => log({ evento: "ERROR", error }));
+
+      usuarios[cuenta_id] = { socket, log };
+    }
+
+    function conectar(cuenta_id) {
+      const { socket } = usuarios[cuenta_id];
+      socket.emit("connect_user", { cuenta_id });
+    }
+
+    function enviarUbicacion(cuenta_id) {
+      const { socket } = usuarios[cuenta_id];
+      const lat = 19.4326 + Math.random() * 0.01;
+      const lon = -99.1332 + Math.random() * 0.01;
+      socket.emit("ubicacion", {
+        cuenta_id,
+        lat,
+        lon,
+        telefono_porcentaje: Math.floor(Math.random() * 100),
+        gatget_porcentaje: Math.floor(Math.random() * 100)
       });
     }
 
-    function enviarFormulario(event) {
-      event.preventDefault();
-      const cuenta_id = parseInt(document.getElementById("cuenta_id").value);
-      const lat = parseFloat(document.getElementById("lat").value);
-      const lon = parseFloat(document.getElementById("lon").value);
-
-      const data = { cuenta_id, lat, lon };
-      console.log("📤 Enviando ubicación desde formulario:", data);
-      socket.emit("ubicacion", data);
+    function obtenerUbicacionesGrupo(cuenta_id) {
+      const { socket } = usuarios[cuenta_id];
+      socket.emit("obtener_ubicaciones_grupo", { cuenta_id });
     }
   </script>
 </body>

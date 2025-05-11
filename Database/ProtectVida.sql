@@ -11,19 +11,10 @@ CREATE TABLE cuenta (
     , altura DECIMAL(5,2)
     , sexo ENUM('M', 'F', 'Otro')
     , fecha_nacimiento DATE
-    , fcm_token VARCHAR(255) UNIQUE
+    , fcm_token VARCHAR(255) 
 );
 
-CREATE TABLE dispositivo (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    cuenta_id INT,
-    nombre VARCHAR(100),
-    porcentaje INT,
-    ultima_act DATETIME DEFAULT CURRENT_TIMESTAMP,
-    tipo ENUM('Telefono','Reloj','Anillo','Banda'),
-    direccion_mac VARCHAR(17) UNIQUE,
-    FOREIGN KEY (cuenta_id) REFERENCES cuenta(id) ON DELETE CASCADE
-);
+
 
 CREATE TABLE condicion (
     id INT AUTO_INCREMENT PRIMARY KEY
@@ -95,12 +86,21 @@ CREATE TABLE alerta (
     , FOREIGN KEY (tipo_id) REFERENCES tipo_alerta(id) ON DELETE CASCADE
 );
 
-CREATE TABLE ubicacion(
-     id INT AUTO_INCREMENT PRIMARY KEY
-    , cuenta_id INT
-    , latitud DOUBLE
-    , longitud DOUBLE
-    , FOREIGN KEY (cuenta_id) REFERENCES cuenta(id) ON DELETE CASCADE
+
+CREATE TABLE ubicacion (
+    id SERIAL PRIMARY KEY,
+    cuenta_id INTEGER NOT NULL,
+    latitud FLOAT,
+    longitud FLOAT,
+    telefono_porcentaje INTEGER,
+    telefono_ultima_actualizacion TIMESTAMP,
+    gatget_porcentaje INTEGER,
+    gatget_ultima_actualizacion TIMESTAMP,
+    ubicacion_ultima_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_cuenta
+        FOREIGN KEY(cuenta_id) 
+        REFERENCES cuenta(id)
+        ON DELETE CASCADE
 );
 
 INSERT INTO condicion (nombre) VALUES

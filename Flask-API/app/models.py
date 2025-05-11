@@ -31,29 +31,7 @@ class Cuenta(db.Model):
     signos_vitales = db.relationship('SignoVital', backref='cuenta', lazy=True)
     alertas = db.relationship('Alerta', backref='cuenta', lazy=True)
 
-class Dispositivo(db.Model):
-    __tablename__ = 'dispositivo'
-    
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    cuenta_id = db.Column(db.Integer, db.ForeignKey('cuenta.id', ondelete='CASCADE'), nullable=False)
-    nombre = db.Column(db.String(100), nullable=True)
-    porcentaje = db.Column(db.Integer, nullable=True)
-    ultima_act = db.Column(db.DateTime, default=db.func.current_timestamp())
-    tipo = db.Column(db.Enum('Telefono', 'Reloj', 'Anillo', 'Banda'), nullable=True)
-    direccion_mac = db.Column(db.String(17), unique=True, nullable=True)  # XX:XX:XX:XX:XX:XX
 
-    cuenta = db.relationship('Cuenta', backref=db.backref('dispositivos', lazy=True))
-
-    def to_json(self):
-        return {
-            'dispositivo_id': self.id,
-            'cuenta_id': self.cuenta_id,
-            'nombre': self.nombre,
-            'porcentaje': self.porcentaje,
-            'ultima_act': self.ultima_act.isoformat() if self.ultima_act else None,
-            'tipo': self.tipo,
-            'direccion_mac': self.direccion_mac
-        }
 
 
 
@@ -184,12 +162,22 @@ class Alerta(db.Model):
             'atendida': self.atendida,
             'magnitud': self.magnitud,
         }
+
 class Ubicacion(db.Model):
     __tablename__ = 'ubicacion'
+    
     id = db.Column(db.Integer, primary_key=True)
-    cuenta_id = db.Column(db.Integer, db.ForeignKey('cuenta.id'))
-    latitud = db.Column(db.Float, nullable=True)
-    longitud = db.Column(db.Float, nullable=True)
+    cuenta_id = db.Column(db.Integer, db.ForeignKey('cuenta.id', ondelete='CASCADE'), nullable=False)
+    latitud = db.Column(db.Float)
+    longitud = db.Column(db.Float)
+    telefono_porcentaje = db.Column(db.Integer,nullable=True)
+    telefono_ultima_actualizacion = db.Column(db.DateTime,nullable=True)
+    gatget_porcentaje = db.Column(db.Integer,nullable=True)
+    gatget_ultima_actualizacion = db.Column(db.DateTime,nullable=True)
+    ubicacion_ultima_actualizacion = db.Column(db.DateTime, default=db.func.current_timestamp())
+    
+    # Relación con Cuenta
+    cuenta = db.relationship('Cuenta', backref=db.backref('ubicaciones', lazy=True))
 
     def to_json(self):
         return {
@@ -197,4 +185,9 @@ class Ubicacion(db.Model):
             'cuenta_id': self.cuenta_id,
             'latitud': self.latitud,
             'longitud': self.longitud,
+            'telefono_porcentaje': self.telefono_porcentaje,
+            'telefono_ultima_actualizacion': self.telefono_ultima_actualizacion.isoformat() if self.telefono_ultima_actualizacion else None,
+            'gatget_porcentaje': self.gatget_porcentaje,
+            'gatget_ultima_actualizacion': self.gatget_ultima_actualizacion.isoformat() if self.gatget_ultima_actualizacion else None,
+            'ubicacion_ultima_actualizacion': self.ubicacion_ultima_actualizacion.isoformat() if self.ubicacion_ultima_actualizacion else None
         }

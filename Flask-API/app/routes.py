@@ -39,13 +39,15 @@ def crear_cuenta():
             hash_contraseña=hash_password(contrasenia),
             fcm_token=fcm_token  # Si no se pasó un token, se guardará como None
         )
+        
+        db.session.add(nueva_cuenta)
+        db.session.commit()
         registro_ubicacion = Ubicacion(
             cuenta_id=nueva_cuenta.id,
             longitud=None,
             latitud=None,
         )
         db.session.add(registro_ubicacion)
-        db.session.add(nueva_cuenta)
         db.session.commit()
         return jsonify({'mensaje': 'Cuenta creada exitosamente', 'data': nueva_cuenta.to_json()}), 201
     except Exception as e:
@@ -679,8 +681,8 @@ def conseguir_todas_las_zonas_seguras():
         zonas_data = [zona.to_json() for zona in todas_las_zonas]
 
         return jsonify({
-            'mensaje': 'Zonas seguras obtenidas con éxito',
-            'zonas_seguras': zonas_data
+            'data': zonas_data,
+            'mensaje': 'Zonas seguras obtenidas con éxito'
         }), 200
 
     except Exception as e:
