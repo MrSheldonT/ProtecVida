@@ -7,130 +7,216 @@ from datetime import datetime, timedelta
 analisis_datos = Blueprint('analisis_datos', __name__)
 
 
-@analisis_datos.route('/riesgo')
+def analyze_hypertension(pas_vals, pad_vals):
+    anomalies = [v for v in pas_vals if v >= 130] + [v for v in pad_vals if v >= 80]
+    count = len(anomalies)
+    total = len(pas_vals) + len(pad_vals)
+    porcentaje = (count / total) * 100 if total else 0
+    promedio = (sum(anomalies) / count) if count else 0
+
+    nivel = "normal"
+    severity_num = 0
+    if count > 0:
+        if any(v > 180 for v in pas_vals) and any(v > 120 for v in pad_vals):
+            nivel = "grave"
+            severity_num = 3
+        elif any(v >= 140 for v in pas_vals) or any(v >= 90 for v in pad_vals):
+            nivel = "grave"
+            severity_num = 3
+        elif any(v >= 130 for v in pas_vals) or any(v >= 80 for v in pad_vals):
+            nivel = "moderada"
+            severity_num = 2
+        elif any(120 <= v < 130 for v in pas_vals):
+            nivel = "leve"
+            severity_num = 1
+
+    puntaje = severity_num * 20 + porcentaje
+    puntaje = round(puntaje)
+    return nivel, promedio, porcentaje, min(max(puntaje, 1), 100)
+
+def analyze_hypotension(pas_vals, pad_vals):
+    anomalies = [v for v in pas_vals if v < 90] + [v for v in pad_vals if v < 60]
+    count = len(anomalies)
+    total = len(pas_vals) + len(pad_vals)
+    porcentaje = (count / total) * 100 if total else 0
+    promedio = (sum(anomalies) / count) if count else 0
+
+    nivel = "normal"
+    severity_num = 0
+    if count > 0:
+        if any(v < 80 for v in pas_vals) or any(v < 50 for v in pad_vals):
+            nivel = "grave"
+            severity_num = 3
+        else:
+            nivel = "moderada"
+            severity_num = 2
+
+    puntaje = severity_num * 20 + porcentaje
+    puntaje = round(puntaje)
+    return nivel, promedio, porcentaje, min(max(puntaje, 1), 100)
+
+def analyze_tachycardia(fc_vals):
+    anomalies = [v for v in fc_vals if v > 100]
+    count = len(anomalies)
+    total = len(fc_vals)
+    porcentaje = (count / total) * 100 if total else 0
+    promedio = (sum(anomalies) / count) if count else 0
+
+    nivel = "normal"
+    severity_num = 0
+    if count > 0:
+        if any(v > 140 for v in anomalies):
+            nivel = "grave"
+            severity_num = 3
+        elif any(v >= 121 for v in anomalies):
+            nivel = "moderada"
+            severity_num = 2
+        else:
+            nivel = "leve"
+            severity_num = 1
+
+    puntaje = severity_num * 20 + porcentaje
+    puntaje = round(puntaje)
+    return nivel, promedio, porcentaje, min(max(puntaje, 1), 100)
+
+def analyze_bradycardia(fc_vals):
+    anomalies = [v for v in fc_vals if v < 60]
+    count = len(anomalies)
+    total = len(fc_vals)
+    porcentaje = (count / total) * 100 if total else 0
+    promedio = (sum(anomalies) / count) if count else 0
+
+    nivel = "normal"
+    severity_num = 0
+    if count > 0:
+        if any(v < 40 for v in anomalies):
+            nivel = "grave"
+            severity_num = 3
+        elif any(v <= 49 for v in anomalies):
+            nivel = "moderada"
+            severity_num = 2
+        else:
+            nivel = "leve"
+            severity_num = 1
+
+    puntaje = severity_num * 20 + porcentaje
+    puntaje = round(puntaje)
+    return nivel, promedio, porcentaje, min(max(puntaje, 1), 100)
+
+def analyze_hypoxemia(spo2_vals):
+    anomalies = [v for v in spo2_vals if v < 90]
+    count = len(anomalies)
+    total = len(spo2_vals)
+    porcentaje = (count / total) * 100 if total else 0
+    promedio = (sum(anomalies) / count) if count else 0
+
+    nivel = "normal"
+    severity_num = 0
+    if count > 0:
+        if any(v < 80 for v in anomalies):
+            nivel = "grave"
+            severity_num = 3
+        elif any(v <= 84 for v in anomalies):
+            nivel = "moderada"
+            severity_num = 2
+        else:
+            nivel = "leve"
+            severity_num = 1
+
+    puntaje = severity_num * 20 + porcentaje
+    puntaje = round(puntaje)
+    return nivel, promedio, porcentaje, min(max(puntaje, 1), 100)
+
+@analisis_datos.route('/riesgo', methods=['GET'])
 def riesgo():
     cuenta_id = request.args.get('cuenta_id', type=int)
-    if not cuenta_id:
-        return jsonify({'error': 'Falta cuenta_id'}), 400
+    if cuenta_id is None:
+        return jsonify({'error': 'Falta el parámetro cuenta_id'}), 400
 
-    ahora = datetime.utcnow()
-    ayer = ahora - timedelta(days=1)
-    signos = SignoVital.query \
-        .filter(SignoVital.cuenta_id == cuenta_id) \
-        .filter(SignoVital.tipo_id.in_([1, 2, 3, 4])) \
-        .filter(SignoVital.fecha >= ayer) \
-        .all()
+    cuenta_analizada = Cuenta.query.get(cuenta_id)
+    print(cuenta_analizada.to_json())
 
-    hipert_vals = [];
-    hipot_vals = []
-    taqui_vals = [];
-    bradi_vals = []
-    hipox_vals = []
+    ahora = datetime.now()
+    hace_24h = ahora - timedelta(days=1)
 
-    for sv in signos:
-        if sv.tipo_id == 1:  # FC
-            if sv.valor_numerico_1 > 100:
-                taqui_vals.append(sv.valor_numerico_1)
-            elif sv.valor_numerico_1 < 60:
-                bradi_vals.append(sv.valor_numerico_1)
-        elif sv.tipo_id == 2:  # PAS
-            if sv.valor_numerico_1 >= 130:
-                hipert_vals.append(sv.valor_numerico_1)
-            elif sv.valor_numerico_1 < 90:
-                hipot_vals.append(sv.valor_numerico_1)
-        elif sv.tipo_id == 3:  # PAD
-            if sv.valor_numerico_1 >= 80:
-                hipert_vals.append(sv.valor_numerico_1)
-            elif sv.valor_numerico_1 < 60:
-                hipot_vals.append(sv.valor_numerico_1)
-        elif sv.tipo_id == 4:  # SpO2
-            if sv.valor_numerico_1 < 90:
-                hipox_vals.append(sv.valor_numerico_1)
+    datos_pas = SignoVital.query.filter(
+        SignoVital.cuenta_id == cuenta_id,
+        SignoVital.tipo_id == 1,
+        SignoVital.fecha >= hace_24h
+    ).all()
+    datos_pad = SignoVital.query.filter(
+        SignoVital.cuenta_id == cuenta_id,
+        SignoVital.tipo_id == 2,
+        SignoVital.fecha >= hace_24h
+    ).all()
+    datos_fc = SignoVital.query.filter(
+        SignoVital.cuenta_id == cuenta_id,
+        SignoVital.tipo_id == 3,
+        SignoVital.fecha >= hace_24h
+    ).all()
+    datos_spo2 = SignoVital.query.filter(
+        SignoVital.cuenta_id == cuenta_id,
+        SignoVital.tipo_id == 4,
+        SignoVital.fecha >= hace_24h
+    ).all()
 
-    def calc_puntaje(vals, umbral_normal, tipo):
-        ocurrencias = len(vals)
-        if ocurrencias == 0:
-            return None
-        promedio = sum(vals) / ocurrencias
-        severidad = promedio / umbral_normal
-        puntaje = min(100, int(severidad * ocurrencias * 10))
-        if puntaje < 30:
-            desc = "riesgo bajo"
-        elif puntaje < 70:
-            desc = "riesgo moderado"
-        else:
-            desc = "riesgo alto"
-        return {'ocurrencias': ocurrencias, 'promedio': round(promedio, 1),
-                'puntaje': puntaje, 'descripcion': desc}
+    pas_vals = [sv.valor_numerico_1 for sv in datos_pas]
+    pad_vals = [sv.valor_numerico_1 for sv in datos_pad]
+    fc_vals = [sv.valor_numerico_1 for sv in datos_fc]
+    spo2_vals = [sv.valor_numerico_1 for sv in datos_spo2]
 
-    resultado = []
+    nivel_ht, prom_ht, pct_ht, score_ht = analyze_hypertension(pas_vals, pad_vals)
+    nivel_hipo, prom_hipo, pct_hipo, score_hipo = analyze_hypotension(pas_vals, pad_vals)
+    nivel_taq, prom_taq, pct_taq, score_taq = analyze_tachycardia(fc_vals)
+    nivel_bra, prom_bra, pct_bra, score_bra = analyze_bradycardia(fc_vals)
+    nivel_hypox, prom_hypox, pct_hypox, score_hypox = analyze_hypoxemia(spo2_vals)
 
-    # Hipertensión
-    datos = calc_puntaje(hipert_vals, 130, 'Hipertensión')
-    if datos:
-        resultado.append({
-            'condición': 'Hipertensión',
-            'ocurrencias': datos['ocurrencias'],
-            'promedio_valor': f"{datos['promedio']} mmHg",
-            'puntaje': datos['puntaje'],
-            'descripcion': datos['descripcion']
-        })
-
-    # Hipotensión
-    datos = calc_puntaje(hipot_vals, 90, 'Hipotensión')
-    if datos:
-        resultado.append({
-            'condición': 'Hipotensión',
-            'ocurrencias': datos['ocurrencias'],
-            'promedio_valor': f"{datos['promedio']} mmHg",
-            'puntaje': datos['puntaje'],
-            'descripcion': datos['descripcion']
-        })
-
-    # Taquicardia
-    datos = calc_puntaje(taqui_vals, 100, 'Taquicardia')
-    if datos:
-        resultado.append({
-            'condición': 'Taquicardia',
-            'ocurrencias': datos['ocurrencias'],
-            'promedio_valor': f"{datos['promedio']} lpm",
-            'puntaje': datos['puntaje'],
-            'descripcion': datos['descripcion']
-        })
-
-    # Bradicardia
-    datos = calc_puntaje(bradi_vals, 60, 'Bradicardia')
-    if datos:
-        resultado.append({
-            'condición': 'Bradicardia',
-            'ocurrencias': datos['ocurrencias'],
-            'promedio_valor': f"{datos['promedio']} lpm",
-            'puntaje': datos['puntaje'],
-            'descripcion': datos['descripcion']
-        })
-
-    # Hipoxemia
-    datos = calc_puntaje(hipox_vals, 90, 'Hipoxemia')
-    if datos:
-        resultado.append({
-            'condición': 'Hipoxemia',
-            'ocurrencias': datos['ocurrencias'],
-            'promedio_valor': f"{datos['promedio']} %",
-            'puntaje': datos['puntaje'],
-            'descripcion': datos['descripcion']
-        })
-
-    if hipot_vals and taqui_vals:
-        ocurr = min(len(hipot_vals), len(taqui_vals))
-        prom = (sum(hipot_vals) / len(hipot_vals) + sum(taqui_vals) / len(taqui_vals)) / 2
-        punt = min(100, int(prom / 100 * ocurr * 10))
-        desc = "riesgo alto" if punt > 70 else "riesgo moderado"
-        resultado.append({
-            'condición': 'Choque',
-            'ocurrencias': ocurr,
-            'promedio_valor': f"{round(prom, 1)} mix",
-            'puntaje': punt,
-            'descripcion': desc
-        })
+    resultado = [
+        {
+            "condicion": "Hipertensión",
+            "descripcion": "La hipertensión arterial es la elevación sostenida de la presión arterial (PAS ≥130 mmHg o PAD ≥80 mmHg).",
+            "puntaje": score_ht,
+            "nivel_severidad": nivel_ht,
+            "promedio_anomalo": f"{prom_ht:.1f} mmHg",
+            "porcentaje_afectado": f"{pct_ht:.1f}%",
+            "comentario_clinico": f"Se detectaron lecturas con promedio de {prom_ht:.1f} mmHg, severidad {nivel_ht}."
+        },
+        {
+            "condicion": "Hipotensión",
+            "descripcion": "La hipotensión arterial es la disminución de la presión arterial (PAS <90 mmHg o PAD <60 mmHg).",
+            "puntaje": score_hipo,
+            "nivel_severidad": nivel_hipo,
+            "promedio_anomalo": f"{prom_hipo:.1f} mmHg",
+            "porcentaje_afectado": f"{pct_hipo:.1f}%",
+            "comentario_clinico": f"Se detectaron lecturas con promedio de {prom_hipo:.1f} mmHg, severidad {nivel_hipo}."
+        },
+        {
+            "condicion": "Taquicardia",
+            "descripcion": "La taquicardia es la elevación del ritmo cardíaco (>100 latidos por minuto).",
+            "puntaje": score_taq,
+            "nivel_severidad": nivel_taq,
+            "promedio_anomalo": f"{prom_taq:.1f} lpm",
+            "porcentaje_afectado": f"{pct_taq:.1f}%",
+            "comentario_clinico": f"Se detectaron lecturas con promedio de {prom_taq:.1f} lpm, severidad {nivel_taq}."
+        },
+        {
+            "condicion": "Bradicardia",
+            "descripcion": "La bradicardia es la disminución del ritmo cardíaco (<60 latidos por minuto).",
+            "puntaje": score_bra,
+            "nivel_severidad": nivel_bra,
+            "promedio_anomalo": f"{prom_bra:.1f} lpm",
+            "porcentaje_afectado": f"{pct_bra:.1f}%",
+            "comentario_clinico": f"Se detectaron lecturas con promedio de {prom_bra:.1f} lpm, severidad {nivel_bra}."
+        },
+        {
+            "condicion": "Hipoxemia",
+            "descripcion": "La hipoxemia es la disminución de la saturación de oxígeno (<90%).",
+            "puntaje": score_hypox,
+            "nivel_severidad": nivel_hypox,
+            "promedio_anomalo": f"{prom_hypox:.1f}%",
+            "porcentaje_afectado": f"{pct_hypox:.1f}%",
+            "comentario_clinico": f"Se detectaron lecturas con promedio de {prom_hypox:.1f}%, severidad {nivel_hypox}."
+        },
+    ]
 
     return jsonify(resultado)
