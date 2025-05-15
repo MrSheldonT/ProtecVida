@@ -69,7 +69,7 @@ def create_app(test_config=None):
 
         html_content = render_template(
             'email.html',
-            verification_url='localhost:5000/recuperar_contrasenia?token=' + token,
+            verification_url=f'{request.host_url}/recuperar_contrasenia?token=' + token,
             year=current_year
         )
 
