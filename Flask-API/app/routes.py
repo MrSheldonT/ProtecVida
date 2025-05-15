@@ -831,6 +831,14 @@ def obtener_ultimos_signos_por_tipo_por_miembro():
 
             cuenta = db.session.query(Cuenta).get(miembro.cuenta_id)
 
+            # Obtener condiciones del miembro
+            condiciones = db.session.query(Condicion).join(
+                CuentaCondicion,
+                Condicion.id == CuentaCondicion.condicion_id
+            ).filter(
+                CuentaCondicion.cuenta_id == miembro.cuenta_id
+            ).all()
+
             tipos = db.session.query(TipoSignoVital).all()
 
             signos_por_tipo = []
@@ -848,14 +856,17 @@ def obtener_ultimos_signos_por_tipo_por_miembro():
 
             resultado.append({
                 'cuenta': cuenta.to_json(),
-                'signos_vitales': signos_por_tipo  
+                'signos_vitales': signos_por_tipo,
+                'condiciones': [condicion.to_json() for condicion in condiciones]
             })
 
-        return jsonify({'mensaje': 'Últimos signos vitales por tipo obtenidos con éxito', 'data': resultado}), 200
+        return jsonify({
+            'mensaje': 'Últimos signos vitales por tipo obtenidos con éxito', 
+            'data': resultado
+        }), 200
 
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
-
 
 
 @condicion.route('/actualizar_condiciones', methods=['PUT'])
