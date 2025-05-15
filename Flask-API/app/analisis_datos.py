@@ -133,12 +133,25 @@ def riesgo():
     if cuenta_id is None:
         return jsonify({'error': 'Falta el parámetro cuenta_id'}), 400
 
-    cuenta_analizada = Cuenta.query.get(cuenta_id)
-    print(cuenta_analizada.to_json())
+    # Obtener los datos de la cuenta
+    cuenta = Cuenta.query.get(cuenta_id)
+    if not cuenta:
+        return jsonify({'error': 'Cuenta no encontrada'}), 404
+
+    edad = None
+    if cuenta.fecha_nacimiento:
+        hoy = datetime.now()
+        edad = hoy.year - cuenta.fecha_nacimiento.year - \
+               ((hoy.month, hoy.day) < (cuenta.fecha_nacimiento.month, cuenta.fecha_nacimiento.day))
+
+    peso = cuenta.peso
+    altura = cuenta.altura
+    sexo = cuenta.sexo
 
     ahora = datetime.now()
     hace_24h = ahora - timedelta(days=1)
 
+    # Obtener datos de signos vitales
     datos_pas = SignoVital.query.filter(
         SignoVital.cuenta_id == cuenta_id,
         SignoVital.tipo_id == 1,
@@ -170,6 +183,24 @@ def riesgo():
     nivel_taq, prom_taq, pct_taq, score_taq = analyze_tachycardia(fc_vals)
     nivel_bra, prom_bra, pct_bra, score_bra = analyze_bradycardia(fc_vals)
     nivel_hypox, prom_hypox, pct_hypox, score_hypox = analyze_hypoxemia(spo2_vals)
+
+    if edad is not None:
+        if edad > 60:
+            # Incrementar severidad para adultos mayores
+            score_ht += 5
+            score_hipo += 5
+            score_taq += 5
+            score_bra += 5
+            score_hypox += 5
+
+    if peso and altura:
+        imc = peso / ((altura / 100) ** 2)
+        if imc >= 30:
+            score_ht += 10
+            score_taq += 5
+        elif imc < 18.5:
+            score_hipo += 10
+            score_bra += 5
 
     resultado = [
         {
