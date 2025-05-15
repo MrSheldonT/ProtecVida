@@ -781,7 +781,7 @@ def conseguir_condicion():
         return jsonify({'error': f'Error: {e}'}), 500
 
 
-signo_vital.route('/registrar_signo', methods=['POST'])
+@signo_vital.route('/registrar_signo', methods=['POST'])
 @token_required
 def registrar_signo():
     condition_data = request.get_json()

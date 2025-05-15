@@ -1,3 +1,4 @@
+DROP DATABASE ProtecVida;
 CREATE DATABASE IF NOT EXISTS ProtecVida;
 USE ProtecVida;
 
