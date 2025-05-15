@@ -114,3 +114,30 @@ def detectar_cambio_estado(lat_actual, lon_actual, lat_anterior, lon_anterior, z
         return "salida"
     else:
         return None
+
+
+def calcular_riesgo_clinico(datos_signos):
+    FC = datos_signos.get('frecuencia')
+    PAS = datos_signos.get('presion_sistolica')
+    SpO2 = datos_signos.get('saturacion')
+
+    if not (FC and PAS and SpO2):
+        return {'estado': 'Datos insuficientes', 'puntuacion': None, 'nivel': 'desconocido'}
+
+    indice_shock = FC / PAS
+    score = min(100, int(40 * indice_shock + 2 * (100 - SpO2)))
+
+    # Interpretar resultado
+    if score < 30:
+        nivel = "Normal"
+    elif score < 70:
+        nivel = "Alerta Moderada"
+    else:
+        nivel = "Alerta Crítica"
+
+    return {
+        'puntuacion': score,
+        'nivel': nivel,
+        'indice_shock': round(indice_shock, 2),
+        'estado': 'OK'
+    }

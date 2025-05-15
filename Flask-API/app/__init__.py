@@ -38,6 +38,8 @@ def create_app(test_config=None):
     mail.init_app(app)
 
     from .routes import cuenta, grupo, zona_segura, condicion, signo_vital,alertas
+    from .analisis_datos import analisis_datos
+    app.register_blueprint(analisis_datos, url_prefix='/analisis')
     app.register_blueprint(cuenta, url_prefix="/cuenta")
     app.register_blueprint(grupo, url_prefix="/grupo")
     app.register_blueprint(zona_segura, url_prefix="/zona_segura")
