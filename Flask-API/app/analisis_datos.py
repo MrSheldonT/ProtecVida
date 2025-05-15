@@ -133,8 +133,9 @@ def riesgo():
     if cuenta_id is None:
         return jsonify({'error': 'Falta el parámetro cuenta_id'}), 400
 
-    # Obtener los datos de la cuenta
+
     cuenta = Cuenta.query.get(cuenta_id)
+    print(cuenta.to_json())
     if not cuenta:
         return jsonify({'error': 'Cuenta no encontrada'}), 404
 
@@ -155,28 +156,35 @@ def riesgo():
     datos_pas = SignoVital.query.filter(
         SignoVital.cuenta_id == cuenta_id,
         SignoVital.tipo_id == 1,
-        SignoVital.fecha >= hace_24h
+        
     ).all()
     datos_pad = SignoVital.query.filter(
         SignoVital.cuenta_id == cuenta_id,
         SignoVital.tipo_id == 2,
-        SignoVital.fecha >= hace_24h
+        
     ).all()
     datos_fc = SignoVital.query.filter(
         SignoVital.cuenta_id == cuenta_id,
         SignoVital.tipo_id == 3,
-        SignoVital.fecha >= hace_24h
+        
     ).all()
     datos_spo2 = SignoVital.query.filter(
         SignoVital.cuenta_id == cuenta_id,
         SignoVital.tipo_id == 4,
-        SignoVital.fecha >= hace_24h
+        
     ).all()
+
+    print(len(datos_spo2))
 
     pas_vals = [sv.valor_numerico_1 for sv in datos_pas]
     pad_vals = [sv.valor_numerico_1 for sv in datos_pad]
     fc_vals = [sv.valor_numerico_1 for sv in datos_fc]
     spo2_vals = [sv.valor_numerico_1 for sv in datos_spo2]
+
+    print(pas_vals)
+    print(pad_vals)
+    print(fc_vals)
+    print(spo2_vals)
 
     nivel_ht, prom_ht, pct_ht, score_ht = analyze_hypertension(pas_vals, pad_vals)
     nivel_hipo, prom_hipo, pct_hipo, score_hipo = analyze_hypotension(pas_vals, pad_vals)
