@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from .models import Cuenta, Condicion, CuentaCondicion, Grupo, MiembroGrupo, ZonaSegura, Alerta, TipoAlerta, SignoVital, Ubicacion
+from .models import Cuenta, Condicion, CuentaCondicion, Grupo, MiembroGrupo, ZonaSegura, Alerta, TipoAlerta, SignoVital, Ubicacion,TipoSignoVital
 from .extensions import db
 from .utils import check_password, hash_password, create_token_jwt, valid_password, valid_email, token_required
 
@@ -697,12 +697,10 @@ def asignar_condicion():
         if not condicion_id:
             return jsonify({'error': 'ID de condición no proporcionado'}), 400
 
-        # Verificar si la condición existe
         condicion = Condicion.query.get(condicion_id)
         if not condicion:
             return jsonify({'error': 'Condición no encontrada'}), 404
 
-        # Verificar si ya está asignada
         existe = CuentaCondicion.query.filter_by(
             cuenta_id=request.user_id,
             condicion_id=condicion_id
@@ -714,7 +712,6 @@ def asignar_condicion():
                 'data': existe.to_json()
             }), 409
 
-        # Crear nueva relación
         nueva_relacion = CuentaCondicion(
             cuenta_id=request.user_id,
             condicion_id=condicion_id
@@ -760,16 +757,13 @@ def remover_condicion():
 @token_required
 def conseguir_condicion():
     try:
-        # Buscar la cuenta del usuario que llama al endpoint
         cuenta = Cuenta.query.get(request.user_id)
         
         if not cuenta:
             return jsonify({'error': 'Cuenta no encontrada'}), 404
 
-        # Acceder a sus condiciones
         condiciones = cuenta.condiciones.all()
 
-        # Convertirlas a JSON
         condiciones_json = [condicion.to_json() for condicion in condiciones]
 
         return jsonify({
@@ -789,7 +783,7 @@ def registrar_signo():
         tipo_id = condition_data.get('tipo_id')
         if not tipo_id:
             return jsonify({'error': 'ID del tipo de signo no asignada'}), 400
-        tipo_id = db.session.query.filter_by(tipo_id=tipo_id).first()
+        tipo_id = db.session.query(TipoSignoVital).filter_by(id=tipo_id).first()
 
         if not tipo_id:
             return jsonify({'error': 'No se ha encontrado el tipo de signo'}), 404
@@ -802,7 +796,7 @@ def registrar_signo():
 
         new_signo_vital = SignoVital(
             cuenta_id=request.user_id,
-            tipo_id=tipo_id,
+            tipo_id=tipo_id.id,
             valor_numerico_1=valor_numerico_1,
         )
         if valor_numerico_2:
@@ -815,6 +809,54 @@ def registrar_signo():
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
 
+@signo_vital.route('/signos_grupo', methods=['GET'])
+@token_required
+def obtener_ultimos_signos_por_tipo_por_miembro():
+    try:
+        grupos_usuario = db.session.query(MiembroGrupo.grupo_id).filter_by(
+            cuenta_id=request.user_id
+        ).subquery()
+
+        miembros = db.session.query(MiembroGrupo).filter(
+            MiembroGrupo.grupo_id.in_(grupos_usuario)
+        ).all()
+
+        resultado = []
+        miembros_ids = set()
+
+        for miembro in miembros:
+            if miembro.cuenta_id in miembros_ids:
+                continue 
+            miembros_ids.add(miembro.cuenta_id)
+
+            cuenta = db.session.query(Cuenta).get(miembro.cuenta_id)
+
+            tipos = db.session.query(TipoSignoVital).all()
+
+            signos_por_tipo = []
+
+            for tipo in tipos:
+                signo = db.session.query(SignoVital).filter_by(
+                    cuenta_id=miembro.cuenta_id,
+                    tipo_id=tipo.id
+                ).order_by(SignoVital.fecha.desc()).first()
+
+                if signo:
+                    signo_json = signo.to_json()
+                    signo_json['tipo'] = tipo.to_json()
+                    signos_por_tipo.append(signo_json)
+
+            resultado.append({
+                'cuenta': cuenta.to_json(),
+                'signos_vitales': signos_por_tipo  
+            })
+
+        return jsonify({'mensaje': 'Últimos signos vitales por tipo obtenidos con éxito', 'data': resultado}), 200
+
+    except Exception as e:
+        return jsonify({'error': f'Error: {e}'}), 500
+
+
 
 @condicion.route('/actualizar_condiciones', methods=['PUT'])
 @token_required
@@ -826,12 +868,11 @@ def actualizar_condiciones():
         if not isinstance(condiciones_ids, list):
             return jsonify({'error': 'condiciones_ids debe ser una lista'}), 400
 
-        # Validar que el usuario existe
+
         cuenta = Cuenta.query.get(request.user_id)
         if not cuenta:
             return jsonify({'error': 'Cuenta no encontrada'}), 404
 
-        # Validar que todas las condiciones existan
         condiciones_existentes = Condicion.query.filter(Condicion.id.in_(condiciones_ids)).all()
         if len(condiciones_existentes) != len(condiciones_ids):
             ids_existentes = [c.id for c in condiciones_existentes]
@@ -841,14 +882,11 @@ def actualizar_condiciones():
                 'condiciones_no_encontradas': ids_no_encontrados
             }), 404
 
-        # Obtener transacción activa
         if not db.session.is_active:
             db.session.begin()
 
-        # Eliminar relaciones existentes
         CuentaCondicion.query.filter_by(cuenta_id=request.user_id).delete()
 
-        # Crear nuevas relaciones
         nuevas_relaciones = []
         for condicion_id in condiciones_ids:
             nueva_relacion = CuentaCondicion(
@@ -860,7 +898,6 @@ def actualizar_condiciones():
 
         db.session.commit()
 
-        # Obtener nombres de condiciones para la respuesta
         condiciones_actualizadas = []
         for rel in nuevas_relaciones:
             condicion = next((c for c in condiciones_existentes if c.id == rel.condicion_id), None)
@@ -948,7 +985,6 @@ def actualizar_ubicacion():
         pass
     except Exception as e:
         return jsonify({'error': f'Error: {e}'}), 500
-    ## actualizar los creados a 201 y no 200
 
 @alertas.route('/conseguir_alertas', methods=['GET'])
 @token_required
