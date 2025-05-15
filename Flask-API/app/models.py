@@ -119,7 +119,6 @@ class SignoVital(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     cuenta_id = db.Column(db.Integer, db.ForeignKey('cuenta.id'), nullable=False)
     tipo_id = db.Column(db.Integer, db.ForeignKey('tipo_signo_vital.id'))
-
     fecha = db.Column(db.DateTime, default=db.func.current_timestamp())
     valor_numerico_1 = db.Column(db.Float)  # Primer valor (frecuencia cardíaca o sistólica)
     valor_numerico_2 = db.Column(db.Float)  # Segundo valor (diastólica)
