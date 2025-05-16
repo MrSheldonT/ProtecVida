@@ -155,6 +155,14 @@ def handle_ubicacion(data):
                                         body=f"Ubicación: Lat {lat}, Lon {lon}",
                                     ),
                                     token=cuenta.fcm_token,
+                                    data={
+                                        "lat": str(lat),
+                                        "lon": str(lon),
+                                        "tipo": "alerta",
+                                        "cuenta_id": str(cuenta_id),
+                                        "timestamp": str(datetime.utcnow()),
+                                        "magnitud": str(nueva_alerta.magnitud)
+                                    }
                                 )
                                 response = messaging.send(message)
                                 print(f"Notificación enviada: {response}")
