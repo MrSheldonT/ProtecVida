@@ -7,6 +7,10 @@ ProtecVida es una aplicación que aprovecha el protocolo de comunicación BLE pa
 - Grupos: Creación de grupos familiares para un monitoreo compartido, permitiendo el acceso a información en tiempo real sobre el estado de salud de los integrantes.
 - Notificaciones personalizadas: Configuración personalizada de alertas según el tipo, miembro, étc.
 
+> [!NOTE]
+> 📱 Repositorio de la aplicación móvil:  
+> [ProtecVidaApp](https://github.com/rafaelmerlin23/ProtecVidaApp)
+
 ## Diagrama ER
 ```mermaid
 erDiagram
